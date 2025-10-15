@@ -13,7 +13,7 @@ export function DonutChart({ data }: DonutProps) {
         <PieChart>
           <Pie data={data} innerRadius={60} outerRadius={80} paddingAngle={4} dataKey="value" nameKey="name">
             {data.map((entry, idx) => (
-              <Cell key={`cell-${idx}`} fill={entry.color} />
+              <Cell key={`cell-${idx}`} fill={entry.color || (idx === 0 ? "var(--color-primary-blue)" : "var(--color-secondary-green)")} />
             ))}
           </Pie>
           <Tooltip />

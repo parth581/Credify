@@ -1,12 +1,16 @@
 "use client"
 
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { BorrowerSidebar } from "@/components/borrower/sidebar"
 import { ActiveLoanCard } from "@/components/borrower/active-loan-card"
 import { NewLoanDialog } from "@/components/borrower/new-loan-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import DonutChart from "@/components/charts/DonutChart"
+import BarChartComp from "@/components/charts/BarChart"
+import StackedBarChart from "@/components/charts/StackedBarChart"
+import GaugeChart from "@/components/charts/GaugeChart"
 
 function Overview() {
   return (
@@ -16,6 +20,94 @@ function Overview() {
         <NewLoanDialog />
       </header>
       <ActiveLoanCard />
+      {/* Charts Section */}
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Loan Repayment Progress</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DonutChart
+              data={{
+                labels: ["Paid", "Remaining"],
+                datasets: [
+                  {
+                    data: [65, 35],
+                    backgroundColor: ["var(--color-secondary-green)", "var(--border)"],
+                  },
+                ],
+              }}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Financial Health Score</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <GaugeChart value={78} />
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>EMI Payment History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BarChartComp
+              data={{
+                labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+                datasets: [
+                  {
+                    label: "Status",
+                    data: [1, 1, 0.5, 1, 0.25, 0],
+                    backgroundColor: [
+                      "var(--color-secondary-green)",
+                      "var(--color-secondary-green)",
+                      "var(--color-accent-yellow)",
+                      "var(--color-secondary-green)",
+                      "var(--color-accent-yellow)",
+                      "var(--destructive)",
+                    ],
+                  },
+                ],
+              }}
+              options={{
+                plugins: { legend: { display: false } },
+                scales: {
+                  y: {
+                    suggestedMin: 0,
+                    suggestedMax: 1,
+                    ticks: {
+                      stepSize: 0.25,
+                      callback: (v: number) => (v === 1 ? "On time" : v === 0 ? "Overdue" : ""),
+                    },
+                  },
+                },
+              }}
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Interest vs. Principal (per EMI)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <StackedBarChart
+              data={{
+                labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+                datasets: [
+                  { label: "Principal", data: [200, 220, 240, 260, 280, 300], backgroundColor: "var(--color-secondary-green)" },
+                  { label: "Interest", data: [100, 95, 90, 85, 80, 75], backgroundColor: "var(--color-accent-yellow)" },
+                ],
+              }}
+              options={{ plugins: { legend: { display: true } } }}
+            />
+          </CardContent>
+        </Card>
+      </section>
       <section>
         <div className="mb-2 text-sm font-medium">Payment History</div>
         <Card className="transition-all hover:shadow-md hover:ring-1 hover:ring-primary/25">
@@ -105,6 +197,7 @@ function Settings() {
 }
 
 export default function BorrowerDashboard() {
+  const router = useRouter()
   const sp = useSearchParams()
   const tab = sp.get("tab")
   const active = tab === "payments" ? "Payments" : tab === "settings" ? "Settings" : "Overview"
@@ -114,6 +207,9 @@ export default function BorrowerDashboard() {
       <div className="flex min-h-screen">
         <BorrowerSidebar active={active} />
         <main className="mx-auto flex-1 space-y-6 p-6">
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => router.push("/")}>Sign Out</Button>
+          </div>
           {active === "Overview" && <Overview />}
           {active === "Payments" && <Payments />}
           {active === "Settings" && <Settings />}

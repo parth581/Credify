@@ -3,117 +3,123 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Fintech palette tokens */
 :root {
-  /* Plum/Lilac base (light) */
-  --background: #f3f0fa; /* light grey-lilac */
-  --foreground: #1a1027; /* near-black plum */
-  --card: #ffffff;
-  --card-foreground: var(--foreground);
+  --color-primary-blue: #003366;
+  --color-secondary-green: #3E8E41;
+  --color-accent-yellow: #FFC107;
+  --color-neutral-light: #F5F5F5;
+  --color-neutral-white: #FFFFFF;
+  --color-neutral-dark: #212121;
+  --color-inactive-purple: #B2A6C8;
 
-  --popover: #ffffff;
-  --popover-foreground: var(--foreground);
+  /* Base semantic tokens mapped to palette */
+  --background: var(--color-neutral-white);
+  --foreground: var(--color-neutral-dark);
+  --card: var(--color-neutral-white);
+  --card-foreground: var(--color-neutral-dark);
 
-  /* Primary brand: medium purple */
-  --primary: #8c6ac8; /* medium muted purple */
-  --primary-foreground: #1a1027; /* ensures contrast on light UI */
+  --popover: var(--color-neutral-white);
+  --popover-foreground: var(--color-neutral-dark);
 
-  /* Secondary/lilac surfaces (keep palette ≤5 colors) */
-  --secondary: #e9def8; /* soft lilac */
-  --secondary-foreground: var(--foreground);
+  /* Primary used for CTAs */
+  --primary: var(--color-secondary-green);
+  --primary-foreground: var(--color-neutral-white);
 
-  --muted: #efe8fb; /* pale lavender */
-  --muted-foreground: #4b3a65; /* readable on lilac */
+  /* Secondary for light surfaces */
+  --secondary: var(--color-neutral-light);
+  --secondary-foreground: var(--color-neutral-dark);
 
-  --accent: var(--primary);
-  --accent-foreground: var(--primary-foreground);
+  --muted: var(--color-neutral-light);
+  --muted-foreground: #6b7280; /* slate-500 */
+
+  --accent: var(--color-accent-yellow);
+  --accent-foreground: #3b2f00;
 
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
 
-  --border: #e6e0f2; /* lilac-tinted border */
-  --input: #e6e0f2;
-  --ring: #d8c6f0; /* lavender focus ring */
+  --border: #e5e7eb; /* gray-200 */
+  --input: #e5e7eb;
+  --ring: #93c5fd; /* sky-300 as focus ring */
 
-  /* Charts derive from brand + neutrals */
-  --chart-1: var(--primary);
-  --chart-2: #4b3a65; /* deep muted plum */
-  --chart-3: #b9a3e6; /* light purple */
-  --chart-4: #1a1027; /* near-black plum */
-  --chart-5: #efe8fb;
+  /* Charts */
+  --chart-1: var(--color-primary-blue);
+  --chart-2: var(--color-secondary-green);
+  --chart-3: var(--color-accent-yellow);
+  --chart-4: #64748b; /* slate-500 */
+  --chart-5: #94a3b8; /* slate-400 */
 
   --radius: 0.75rem;
 
-  /* Sidebar defaults for light theme */
-  --sidebar: #ffffff;
-  --sidebar-foreground: var(--foreground);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: #f5f1fb;
-  --sidebar-accent-foreground: var(--foreground);
-  --sidebar-border: var(--border);
+  /* Sidebar (light theme) */
+  --sidebar: var(--color-primary-blue);
+  --sidebar-foreground: var(--color-neutral-white);
+  --sidebar-primary: var(--color-secondary-green);
+  --sidebar-primary-foreground: var(--color-neutral-white);
+  --sidebar-accent: #0a3a66; /* darker blue tint */
+  --sidebar-accent-foreground: var(--color-neutral-white);
+  --sidebar-border: #0f4a80;
   --sidebar-ring: var(--ring);
 }
 
-/* Dark variant used by lender theme */
 .dark {
-  --background: #2a0e3f; /* deep plum */
-  --foreground: #efe8fb;
-  --card: #36114f; /* dark card on plum */
-  --card-foreground: #efe8fb;
+  --background: #0b1a2a; /* deep navy */
+  --foreground: var(--color-neutral-white);
+  --card: #0f2438;
+  --card-foreground: var(--color-neutral-white);
 
-  --popover: #36114f;
-  --popover-foreground: #efe8fb;
+  --popover: #0f2438;
+  --popover-foreground: var(--color-neutral-white);
 
-  --primary: #8c6ac8;
-  --primary-foreground: #1a1027;
+  --primary: var(--color-secondary-green);
+  --primary-foreground: var(--color-neutral-white);
 
-  --secondary: #3b1557; /* darker plum surface */
-  --secondary-foreground: #efe8fb;
+  --secondary: #152c45; /* darker navy surface */
+  --secondary-foreground: var(--color-neutral-white);
 
-  --muted: #2f0f46;
-  --muted-foreground: #cfc0ea;
+  --muted: #14273f;
+  --muted-foreground: #cbd5e1; /* slate-300 */
 
-  --accent: var(--primary);
-  --accent-foreground: var(--primary-foreground);
+  --accent: var(--color-accent-yellow);
+  --accent-foreground: #3b2f00;
 
   --destructive: #f87171;
-  --destructive-foreground: #1a1027;
+  --destructive-foreground: #111827;
 
-  --border: #4a1b6b;
-  --input: #4a1b6b;
-  --ring: #b9a3e6;
+  --border: #1e3a5f;
+  --input: #1e3a5f;
+  --ring: #2563eb; /* blue-600 */
 
-  --chart-1: var(--primary);
-  --chart-2: #cfc0ea;
-  --chart-3: #4a1b6b;
-  --chart-4: #7b62b7;
-  --chart-5: #f3f0fa;
+  --chart-1: var(--color-primary-blue);
+  --chart-2: var(--color-secondary-green);
+  --chart-3: var(--color-accent-yellow);
+  --chart-4: #60a5fa; /* blue-400 */
+  --chart-5: #93c5fd; /* blue-300 */
 
-  --sidebar: #2f0f46;
-  --sidebar-foreground: #efe8fb;
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: #3b1557;
-  --sidebar-accent-foreground: #efe8fb;
-  --sidebar-border: #4a1b6b;
+  --sidebar: #08233b; /* darker blue */
+  --sidebar-foreground: var(--color-neutral-white);
+  --sidebar-primary: var(--color-secondary-green);
+  --sidebar-primary-foreground: var(--color-neutral-white);
+  --sidebar-accent: #0f3556;
+  --sidebar-accent-foreground: var(--color-neutral-white);
+  --sidebar-border: #1e3a5f;
   --sidebar-ring: var(--ring);
 }
 
-/* Scoped themes so dashboards can opt-in distinctly while staying consistent */
+/* Scoped themes (optional overrides) */
 .theme-lender.dark {
-  /* uses the .dark values above */
 }
 
 .theme-borrower {
-  /* reinforce a brighter lilac canvas for borrower */
-  --background: #f7f4fd;
-  --muted: #f0e9fc;
-  --border: #e8e1f5;
-  --ring: #d8c6f0;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #2d2340;
-  --sidebar-accent: #f6f1fe;
-  --sidebar-border: #e8e1f5;
+  --background: var(--color-neutral-white);
+  --muted: var(--color-neutral-light);
+  --border: #e5e7eb;
+  --ring: var(--ring);
+  --sidebar: var(--color-primary-blue);
+  --sidebar-foreground: var(--color-neutral-white);
+  --sidebar-accent: #0a3a66;
+  --sidebar-border: #0f4a80;
 }
 
 @theme inline {

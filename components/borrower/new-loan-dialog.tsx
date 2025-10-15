@@ -5,8 +5,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState } from "react"
 
 export function NewLoanDialog() {
+  const [loanType, setLoanType] = useState<"personal" | "business" | "">("")
+  const [businessSector, setBusinessSector] = useState<string>("")
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -22,9 +25,35 @@ export function NewLoanDialog() {
             <Input id="amount" type="number" placeholder="e.g., 5000" />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="purpose">Purpose</Label>
-            <Input id="purpose" placeholder="e.g., Business expansion" />
+            <Label>Loan Type</Label>
+            <Select onValueChange={(v) => setLoanType(v as "personal" | "business")}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select loan type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="personal">Personal</SelectItem>
+                <SelectItem value="business">Business</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+          {loanType === "business" && (
+            <div className="grid gap-2">
+              <Label>Business Sector</Label>
+              <Select onValueChange={(v) => setBusinessSector(v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select business sector" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pharmacy">Pharmacy</SelectItem>
+                  <SelectItem value="clinic">Clinic</SelectItem>
+                  <SelectItem value="tailor">Tailor</SelectItem>
+                  <SelectItem value="school">School</SelectItem>
+                  <SelectItem value="gym">Gym</SelectItem>
+                  <SelectItem value="retail-shop">Small Retail Shop</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="grid gap-2">
             <Label>Duration</Label>
             <Select>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { LenderSidebar } from "@/components/lender/sidebar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -250,6 +250,7 @@ function SettingsSection() {
 }
 
 export default function LenderDashboard() {
+  const router = useRouter()
   const sp = useSearchParams()
   const tab = sp.get("tab")
   const active =
@@ -266,6 +267,9 @@ export default function LenderDashboard() {
       <div className="flex min-h-screen">
         <LenderSidebar active={active} />
         <main className="flex-1 space-y-6 p-6">
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => router.push("/")}>Sign Out</Button>
+          </div>
           {active === "Marketplace" && <MarketplaceSection />}
           {active === "My Portfolio" && <PortfolioSection />}
           {active === "Payments" && <PaymentsSection />}
