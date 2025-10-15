@@ -1,0 +1,167 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Plum/Lilac base (light) */
+  --background: #f3f0fa; /* light grey-lilac */
+  --foreground: #1a1027; /* near-black plum */
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
+
+  /* Primary brand: medium purple */
+  --primary: #8c6ac8; /* medium muted purple */
+  --primary-foreground: #1a1027; /* ensures contrast on light UI */
+
+  /* Secondary/lilac surfaces (keep palette ≤5 colors) */
+  --secondary: #e9def8; /* soft lilac */
+  --secondary-foreground: var(--foreground);
+
+  --muted: #efe8fb; /* pale lavender */
+  --muted-foreground: #4b3a65; /* readable on lilac */
+
+  --accent: var(--primary);
+  --accent-foreground: var(--primary-foreground);
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --border: #e6e0f2; /* lilac-tinted border */
+  --input: #e6e0f2;
+  --ring: #d8c6f0; /* lavender focus ring */
+
+  /* Charts derive from brand + neutrals */
+  --chart-1: var(--primary);
+  --chart-2: #4b3a65; /* deep muted plum */
+  --chart-3: #b9a3e6; /* light purple */
+  --chart-4: #1a1027; /* near-black plum */
+  --chart-5: #efe8fb;
+
+  --radius: 0.75rem;
+
+  /* Sidebar defaults for light theme */
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #f5f1fb;
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+}
+
+/* Dark variant used by lender theme */
+.dark {
+  --background: #2a0e3f; /* deep plum */
+  --foreground: #efe8fb;
+  --card: #36114f; /* dark card on plum */
+  --card-foreground: #efe8fb;
+
+  --popover: #36114f;
+  --popover-foreground: #efe8fb;
+
+  --primary: #8c6ac8;
+  --primary-foreground: #1a1027;
+
+  --secondary: #3b1557; /* darker plum surface */
+  --secondary-foreground: #efe8fb;
+
+  --muted: #2f0f46;
+  --muted-foreground: #cfc0ea;
+
+  --accent: var(--primary);
+  --accent-foreground: var(--primary-foreground);
+
+  --destructive: #f87171;
+  --destructive-foreground: #1a1027;
+
+  --border: #4a1b6b;
+  --input: #4a1b6b;
+  --ring: #b9a3e6;
+
+  --chart-1: var(--primary);
+  --chart-2: #cfc0ea;
+  --chart-3: #4a1b6b;
+  --chart-4: #7b62b7;
+  --chart-5: #f3f0fa;
+
+  --sidebar: #2f0f46;
+  --sidebar-foreground: #efe8fb;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #3b1557;
+  --sidebar-accent-foreground: #efe8fb;
+  --sidebar-border: #4a1b6b;
+  --sidebar-ring: var(--ring);
+}
+
+/* Scoped themes so dashboards can opt-in distinctly while staying consistent */
+.theme-lender.dark {
+  /* uses the .dark values above */
+}
+
+.theme-borrower {
+  /* reinforce a brighter lilac canvas for borrower */
+  --background: #f7f4fd;
+  --muted: #f0e9fc;
+  --border: #e8e1f5;
+  --ring: #d8c6f0;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #2d2340;
+  --sidebar-accent: #f6f1fe;
+  --sidebar-border: #e8e1f5;
+}
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-geist-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
