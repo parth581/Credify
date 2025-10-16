@@ -53,7 +53,7 @@ export function Hero() {
       <h1 className="text-balance text-3xl font-semibold tracking-tight md:text-5xl">
         Community-Powered Lending. Fairer for Everyone.
       </h1>
-      <p className="text-pretty text-base text-[var(--color-neutral-dark)] md:text-lg">
+      <p className="text-pretty text-base text-[var(--color-text-on-light)] md:text-lg">
         Connect directly with lenders or fund promising applications. A transparent, secure, and community-driven loan
         marketplace.
       </p>

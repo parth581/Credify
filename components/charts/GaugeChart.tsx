@@ -26,7 +26,7 @@ export default function GaugeChart({ value, options, className }: GaugeChartProp
     datasets: [
       {
         data: [clamped, 100 - clamped],
-        backgroundColor: [resolveColor("var(--color-secondary-green)"), resolveColor("var(--border)")],
+        backgroundColor: [resolveColor("var(--color-secondary-aqua)"), resolveColor("var(--color-background-light)")],
         borderWidth: 0,
         circumference: 180,
         rotation: -90,

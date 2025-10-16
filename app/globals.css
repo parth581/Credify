@@ -5,105 +5,106 @@
 
 /* Fintech palette tokens */
 :root {
-  --color-primary-blue: #003366;
-  --color-secondary-green: #3E8E41;
-  --color-accent-yellow: #FFC107;
-  --color-neutral-light: #F5F5F5;
-  --color-neutral-white: #FFFFFF;
-  --color-neutral-dark: #212121;
-  --color-inactive-purple: #B2A6C8;
+  --color-primary-purple: #7209B7;           /* Main background for the sidebar and main headers */
+  --color-secondary-aqua: #4CC9F0;          /* For charts, secondary headers, and data visualization */
+  --color-accent-yellow: #FFC107;             /* For all CTA buttons and success states (e.g., "On Track") */
+  --color-status-warning: #FB5607;           /* For "Delayed" or "Overdue" status badges */
+  --color-text-on-dark: #FFFFFF;              /* White text on dark purple backgrounds */
+  --color-text-on-light: #212121;           /* Dark gray text on light backgrounds */
+  --color-background-light: #F0F2F5;       /* Very light gray for the main content background */
+  --color-card-background: #FFFFFF;        /* Pure white for cards and forms */
 
   /* Base semantic tokens mapped to palette */
-  --background: var(--color-neutral-white);
-  --foreground: var(--color-neutral-dark);
-  --card: var(--color-neutral-white);
-  --card-foreground: var(--color-neutral-dark);
+  --background: var(--color-background-light);
+  --foreground: var(--color-text-on-light);
+  --card: var(--color-card-background);
+  --card-foreground: var(--color-text-on-light);
 
-  --popover: var(--color-neutral-white);
-  --popover-foreground: var(--color-neutral-dark);
+  --popover: var(--color-card-background);
+  --popover-foreground: var(--color-text-on-light);
 
   /* Primary used for CTAs */
-  --primary: var(--color-secondary-green);
-  --primary-foreground: var(--color-neutral-white);
+  --primary: var(--color-accent-yellow);
+  --primary-foreground: var(--color-text-on-light);
 
   /* Secondary for light surfaces */
-  --secondary: var(--color-neutral-light);
-  --secondary-foreground: var(--color-neutral-dark);
+  --secondary: var(--color-background-light);
+  --secondary-foreground: var(--color-text-on-light);
 
-  --muted: var(--color-neutral-light);
+  --muted: var(--color-background-light);
   --muted-foreground: #6b7280; /* slate-500 */
 
-  --accent: var(--color-accent-yellow);
-  --accent-foreground: #3b2f00;
+  --accent: var(--color-secondary-aqua);
+  --accent-foreground: var(--color-text-on-light);
 
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
+  --destructive: var(--color-status-warning);
+  --destructive-foreground: var(--color-text-on-dark);
 
   --border: #e5e7eb; /* gray-200 */
   --input: #e5e7eb;
-  --ring: #93c5fd; /* sky-300 as focus ring */
+  --ring: var(--color-secondary-aqua); /* aqua as focus ring */
 
   /* Charts */
-  --chart-1: var(--color-primary-blue);
-  --chart-2: var(--color-secondary-green);
+  --chart-1: var(--color-primary-purple);
+  --chart-2: var(--color-secondary-aqua);
   --chart-3: var(--color-accent-yellow);
-  --chart-4: #64748b; /* slate-500 */
-  --chart-5: #94a3b8; /* slate-400 */
+  --chart-4: var(--color-status-warning);
+  --chart-5: #64748b; /* slate-500 */
 
   --radius: 0.75rem;
 
   /* Sidebar (light theme) */
-  --sidebar: var(--color-primary-blue);
-  --sidebar-foreground: var(--color-neutral-white);
-  --sidebar-primary: var(--color-secondary-green);
-  --sidebar-primary-foreground: var(--color-neutral-white);
-  --sidebar-accent: #0a3a66; /* darker blue tint */
-  --sidebar-accent-foreground: var(--color-neutral-white);
-  --sidebar-border: #0f4a80;
+  --sidebar: var(--color-primary-purple);
+  --sidebar-foreground: var(--color-text-on-dark);
+  --sidebar-primary: var(--color-secondary-aqua);
+  --sidebar-primary-foreground: var(--color-text-on-dark);
+  --sidebar-accent: #5A0780; /* darker purple tint */
+  --sidebar-accent-foreground: var(--color-text-on-dark);
+  --sidebar-border: #4A0666;
   --sidebar-ring: var(--ring);
 }
 
 .dark {
-  --background: #0b1a2a; /* deep navy */
-  --foreground: var(--color-neutral-white);
-  --card: #0f2438;
-  --card-foreground: var(--color-neutral-white);
+  --background: #1a0b2e; /* deep purple */
+  --foreground: var(--color-text-on-dark);
+  --card: #2d1b3d;
+  --card-foreground: var(--color-text-on-dark);
 
-  --popover: #0f2438;
-  --popover-foreground: var(--color-neutral-white);
+  --popover: #2d1b3d;
+  --popover-foreground: var(--color-text-on-dark);
 
-  --primary: var(--color-secondary-green);
-  --primary-foreground: var(--color-neutral-white);
+  --primary: var(--color-accent-yellow);
+  --primary-foreground: var(--color-text-on-light);
 
-  --secondary: #152c45; /* darker navy surface */
-  --secondary-foreground: var(--color-neutral-white);
+  --secondary: #251a35; /* darker purple surface */
+  --secondary-foreground: var(--color-text-on-dark);
 
-  --muted: #14273f;
+  --muted: #1f1529;
   --muted-foreground: #cbd5e1; /* slate-300 */
 
-  --accent: var(--color-accent-yellow);
-  --accent-foreground: #3b2f00;
+  --accent: var(--color-secondary-aqua);
+  --accent-foreground: var(--color-text-on-light);
 
-  --destructive: #f87171;
-  --destructive-foreground: #111827;
+  --destructive: var(--color-status-warning);
+  --destructive-foreground: var(--color-text-on-dark);
 
-  --border: #1e3a5f;
-  --input: #1e3a5f;
-  --ring: #2563eb; /* blue-600 */
+  --border: #3d2a4d;
+  --input: #3d2a4d;
+  --ring: var(--color-secondary-aqua); /* aqua-600 */
 
-  --chart-1: var(--color-primary-blue);
-  --chart-2: var(--color-secondary-green);
+  --chart-1: var(--color-primary-purple);
+  --chart-2: var(--color-secondary-aqua);
   --chart-3: var(--color-accent-yellow);
-  --chart-4: #60a5fa; /* blue-400 */
+  --chart-4: var(--color-status-warning);
   --chart-5: #93c5fd; /* blue-300 */
 
-  --sidebar: #08233b; /* darker blue */
-  --sidebar-foreground: var(--color-neutral-white);
-  --sidebar-primary: var(--color-secondary-green);
-  --sidebar-primary-foreground: var(--color-neutral-white);
-  --sidebar-accent: #0f3556;
-  --sidebar-accent-foreground: var(--color-neutral-white);
-  --sidebar-border: #1e3a5f;
+  --sidebar: #1a0b2e; /* darker purple */
+  --sidebar-foreground: var(--color-text-on-dark);
+  --sidebar-primary: var(--color-secondary-aqua);
+  --sidebar-primary-foreground: var(--color-text-on-dark);
+  --sidebar-accent: #251a35;
+  --sidebar-accent-foreground: var(--color-text-on-dark);
+  --sidebar-border: #3d2a4d;
   --sidebar-ring: var(--ring);
 }
 
@@ -112,14 +113,14 @@
 }
 
 .theme-borrower {
-  --background: var(--color-neutral-white);
-  --muted: var(--color-neutral-light);
+  --background: var(--color-background-light);
+  --muted: var(--color-background-light);
   --border: #e5e7eb;
   --ring: var(--ring);
-  --sidebar: var(--color-primary-blue);
-  --sidebar-foreground: var(--color-neutral-white);
-  --sidebar-accent: #0a3a66;
-  --sidebar-border: #0f4a80;
+  --sidebar: var(--color-primary-purple);
+  --sidebar-foreground: var(--color-text-on-dark);
+  --sidebar-accent: #5A0780;
+  --sidebar-border: #4A0666;
 }
 
 @theme inline {

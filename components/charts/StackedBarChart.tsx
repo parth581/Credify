@@ -56,7 +56,7 @@ export default function StackedBarChart({ data, options, className }: StackedBar
   const normalized = useMemo(() => ({
     labels: data.labels,
     datasets: data.datasets.map((ds, i) => {
-      const defaultBg = i === 0 ? getCssVariable("--color-secondary-green") : getCssVariable("--color-accent-yellow")
+      const defaultBg = i === 0 ? getCssVariable("--color-secondary-aqua") : getCssVariable("--color-accent-yellow")
       const bg = Array.isArray(ds.backgroundColor)
         ? (ds.backgroundColor as string[]).map((c) => (mounted ? resolveColor(c) : c))
         : (ds.backgroundColor

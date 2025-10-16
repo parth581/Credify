@@ -22,7 +22,7 @@ function Overview() {
       <ActiveLoanCard />
       {/* Charts Section */}
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
+        <Card className="bg-[var(--color-card-background)]">
           <CardHeader>
             <CardTitle>Loan Repayment Progress</CardTitle>
           </CardHeader>
@@ -33,7 +33,7 @@ function Overview() {
                 datasets: [
                   {
                     data: [65, 35],
-                    backgroundColor: ["var(--color-secondary-green)", "var(--border)"],
+                    backgroundColor: ["var(--color-accent-yellow)", "var(--color-background-light)"],
                   },
                 ],
               }}
@@ -41,7 +41,7 @@ function Overview() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-[var(--color-card-background)]">
           <CardHeader>
             <CardTitle>Financial Health Score</CardTitle>
           </CardHeader>
@@ -50,7 +50,7 @@ function Overview() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 bg-[var(--color-card-background)]">
           <CardHeader>
             <CardTitle>EMI Payment History</CardTitle>
           </CardHeader>
@@ -63,10 +63,10 @@ function Overview() {
                     label: "Status",
                     data: [1, 1, 0.5, 1, 0.25, 0],
                     backgroundColor: [
-                      "var(--color-secondary-green)",
-                      "var(--color-secondary-green)",
+                      "var(--color-secondary-aqua)",
+                      "var(--color-secondary-aqua)",
                       "var(--color-accent-yellow)",
-                      "var(--color-secondary-green)",
+                      "var(--color-secondary-aqua)",
                       "var(--color-accent-yellow)",
                       "var(--destructive)",
                     ],
@@ -90,7 +90,7 @@ function Overview() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 bg-[var(--color-card-background)]">
           <CardHeader>
             <CardTitle>Interest vs. Principal (per EMI)</CardTitle>
           </CardHeader>
@@ -99,7 +99,7 @@ function Overview() {
               data={{
                 labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
                 datasets: [
-                  { label: "Principal", data: [200, 220, 240, 260, 280, 300], backgroundColor: "var(--color-secondary-green)" },
+                  { label: "Principal", data: [200, 220, 240, 260, 280, 300], backgroundColor: "var(--color-secondary-aqua)" },
                   { label: "Interest", data: [100, 95, 90, 85, 80, 75], backgroundColor: "var(--color-accent-yellow)" },
                 ],
               }}
@@ -110,7 +110,7 @@ function Overview() {
       </section>
       <section>
         <div className="mb-2 text-sm font-medium">Payment History</div>
-        <Card className="transition-all hover:shadow-md hover:ring-1 hover:ring-primary/25">
+        <Card className="bg-[var(--color-card-background)] transition-all hover:shadow-md hover:ring-1 hover:ring-primary/25">
           <CardContent className="overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead>
@@ -148,7 +148,7 @@ function Overview() {
 function Payments() {
   return (
     <section className="space-y-4">
-      <Card>
+      <Card className="bg-[var(--color-card-background)]">
         <CardHeader>
           <CardTitle>Upcoming Payment</CardTitle>
         </CardHeader>
@@ -157,7 +157,7 @@ function Payments() {
           <Button className="bg-primary text-primary-foreground">Pay Now</Button>
         </CardContent>
       </Card>
-      <Card>
+      <Card className="bg-[var(--color-card-background)]">
         <CardHeader>
           <CardTitle>Saved Methods</CardTitle>
         </CardHeader>
@@ -173,7 +173,7 @@ function Payments() {
 function Settings() {
   return (
     <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <Card>
+      <Card className="bg-[var(--color-card-background)]">
         <CardHeader>
           <CardTitle>Profile</CardTitle>
         </CardHeader>
@@ -183,7 +183,7 @@ function Settings() {
           <Button className="bg-primary text-primary-foreground">Save</Button>
         </CardContent>
       </Card>
-      <Card>
+      <Card className="bg-[var(--color-card-background)]">
         <CardHeader>
           <CardTitle>Notifications</CardTitle>
         </CardHeader>
@@ -206,7 +206,7 @@ export default function BorrowerDashboard() {
     <div className="theme-borrower">
       <div className="flex min-h-screen">
         <BorrowerSidebar active={active} />
-        <main className="mx-auto flex-1 space-y-6 p-6">
+        <main className="mx-auto flex-1 space-y-6 p-6 bg-[var(--color-background-light)]">
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => router.push("/")}>Sign Out</Button>
           </div>

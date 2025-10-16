@@ -34,7 +34,7 @@ export default function DonutChart({ data, options, className }: DonutChartProps
   }
 
   const defaultColors = useMemo(
-    () => ["var(--color-primary-blue)", "var(--color-secondary-green)", "var(--color-accent-yellow)"].map((c) => (mounted ? resolveColor(c) : c)),
+    () => ["var(--color-primary-purple)", "var(--color-secondary-aqua)", "var(--color-accent-yellow)"].map((c) => (mounted ? resolveColor(c) : c)),
     [mounted]
   )
 
@@ -42,8 +42,8 @@ export default function DonutChart({ data, options, className }: DonutChartProps
 
   const normalized = useMemo(() => {
     const fallbackColors = [
-      getCssVariable("--color-secondary-green"),
-      getCssVariable("--color-neutral-light"),
+      getCssVariable("--color-secondary-aqua"),
+      getCssVariable("--color-background-light"),
     ]
 
     return {

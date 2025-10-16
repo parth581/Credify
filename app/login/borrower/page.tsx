@@ -48,7 +48,7 @@ export default function BorrowerLoginPage() {
         <p className="text-sm text-muted-foreground">Use email & password or login with your photo after KYC.</p>
       </div>
 
-      <Card>
+      <Card className="bg-[var(--color-card-background)]">
         <CardContent className="space-y-4 p-6">
           <Input placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <Input

@@ -59,7 +59,7 @@ export function KycFlow({ role, onDone }: Props) {
   }
 
   return (
-    <Card>
+    <Card className="bg-[var(--color-card-background)]">
       <CardContent className="space-y-4 p-4">
         <div className="text-sm font-medium">KYC Verification ({role})</div>
         <div className="grid gap-4 md:grid-cols-2">

@@ -86,8 +86,8 @@ export default function BarChartComp({ data, options, stacked = false, className
       } else if (ds.backgroundColor) {
         bg = mounted ? resolveColor(ds.backgroundColor as string) : (ds.backgroundColor as string)
       } else {
-        // default: green for value>=1, destructive for 0 (for EMI status use-case)
-        bg = (ds.data as number[]).map((v) => (v >= 1 ? getCssVariable("--color-secondary-green") : getCssVariable("--destructive")))
+        // default: aqua for value>=1, warning for 0 (for EMI status use-case)
+        bg = (ds.data as number[]).map((v) => (v >= 1 ? getCssVariable("--color-secondary-aqua") : getCssVariable("--destructive")))
       }
 
       const border = Array.isArray(ds.borderColor)

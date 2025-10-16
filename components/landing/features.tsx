@@ -17,7 +17,7 @@ export function Features() {
       <h2 className="text-balance text-center text-2xl font-semibold md:text-3xl">Features</h2>
       <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
         {features.map(({ title, desc, Icon }) => (
-          <Card key={title}>
+          <Card key={title} className="bg-[var(--color-card-background)]">
             <CardContent className="flex items-start gap-4 p-6">
               <div className="rounded-md bg-secondary p-2">
                 <Icon className="h-5 w-5" />

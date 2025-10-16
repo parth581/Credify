@@ -8,7 +8,7 @@ export function ActiveLoanCard() {
   const paid = 45
   const remaining = 100 - paid
   return (
-    <Card>
+    <Card className="bg-[var(--color-card-background)]">
       <CardHeader>
         <CardTitle>Loan Repayment Progress</CardTitle>
       </CardHeader>
@@ -17,8 +17,8 @@ export function ActiveLoanCard() {
           <div className="relative">
             <DonutChart
               data={[
-                { name: "Paid", value: paid, color: "#00F5D4" },
-                { name: "Remaining", value: remaining, color: "#94A3B8" },
+                { name: "Paid", value: paid, color: "var(--color-accent-yellow)" },
+                { name: "Remaining", value: remaining, color: "var(--color-background-light)" },
               ]}
             />
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">

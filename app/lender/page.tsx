@@ -55,7 +55,7 @@ function MarketplaceSection() {
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {marketplace.map((m) => (
-          <Card key={m.id} className="bg-card transition-all hover:shadow-md hover:ring-1 hover:ring-primary/25">
+          <Card key={m.id} className="bg-[var(--color-card-background)] transition-all hover:shadow-md hover:ring-1 hover:ring-primary/25">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>{m.purpose}</span>
@@ -93,7 +93,7 @@ function MarketplaceSection() {
 function PortfolioSection() {
   return (
     <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      <Card className="lg:col-span-3">
+      <Card className="lg:col-span-3 bg-[var(--color-card-background)]">
         <CardHeader>
           <CardTitle>My Portfolio</CardTitle>
         </CardHeader>
@@ -107,21 +107,21 @@ function PortfolioSection() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-[var(--color-card-background)]">
         <CardHeader>
           <CardTitle>Loan Status</CardTitle>
         </CardHeader>
         <CardContent>
           <DonutChart
             data={[
-              { name: "Active", value: 12, color: "var(--color-chart-1)" },
-              { name: "Completed", value: 8, color: "var(--color-chart-3)" },
+              { name: "Active", value: 12, color: "var(--color-secondary-aqua)" },
+              { name: "Completed", value: 8, color: "var(--color-accent-yellow)" },
             ]}
           />
         </CardContent>
       </Card>
 
-      <Card className="lg:col-span-2">
+      <Card className="lg:col-span-2 bg-[var(--color-card-background)]">
         <CardHeader>
           <CardTitle>Monthly EMI Collections</CardTitle>
         </CardHeader>
@@ -135,12 +135,12 @@ function PortfolioSection() {
               { name: "May", value: 1500 },
               { name: "Jun", value: 1900 },
             ]}
-            color="var(--color-chart-1)"
+            color="var(--color-secondary-aqua)"
           />
         </CardContent>
       </Card>
 
-      <Card className="lg:col-span-3">
+      <Card className="lg:col-span-3 bg-[var(--color-card-background)]">
         <CardHeader>
           <CardTitle>Active Loans</CardTitle>
         </CardHeader>
@@ -188,7 +188,7 @@ function PortfolioSection() {
 function PaymentsSection() {
   return (
     <section className="space-y-4">
-      <Card>
+      <Card className="bg-[var(--color-card-background)]">
         <CardHeader>
           <CardTitle>Payouts</CardTitle>
         </CardHeader>
@@ -226,7 +226,7 @@ function PaymentsSection() {
 function SettingsSection() {
   return (
     <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <Card>
+      <Card className="bg-[var(--color-card-background)]">
         <CardHeader>
           <CardTitle>Profile</CardTitle>
         </CardHeader>
@@ -236,7 +236,7 @@ function SettingsSection() {
           <Button className="bg-primary text-primary-foreground">Save</Button>
         </CardContent>
       </Card>
-      <Card>
+      <Card className="bg-[var(--color-card-background)]">
         <CardHeader>
           <CardTitle>Notifications</CardTitle>
         </CardHeader>
@@ -266,7 +266,7 @@ export default function LenderDashboard() {
     <div className="theme-lender dark">
       <div className="flex min-h-screen">
         <LenderSidebar active={active} />
-        <main className="flex-1 space-y-6 p-6">
+        <main className="flex-1 space-y-6 p-6 bg-[var(--color-background-light)]">
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => router.push("/")}>Sign Out</Button>
           </div>

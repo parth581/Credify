@@ -25,7 +25,7 @@ export function HowItWorks() {
       <h2 className="text-balance text-center text-2xl font-semibold md:text-3xl">How It Works</h2>
       <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
         {steps.map(({ title, desc, Icon }) => (
-          <Card key={title} className="border-border">
+          <Card key={title} className="border-border bg-[var(--color-card-background)]">
             <CardContent className="flex flex-col items-center gap-3 p-6 text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary">
                 <Icon className="h-6 w-6 text-foreground" />

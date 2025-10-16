@@ -7,7 +7,7 @@ type BarBasicProps = {
   color?: string
 }
 
-export function BarBasicChart({ data, color = "var(--color-secondary-green)" }: BarBasicProps) {
+export function BarBasicChart({ data, color = "var(--color-secondary-aqua)" }: BarBasicProps) {
   return (
     <div className="h-56 w-full">
       <ResponsiveContainer width="100%" height="100%">
