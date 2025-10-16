@@ -2,11 +2,22 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DonutChart } from "@/components/charts/donut"
-import { Button } from "@/components/ui/button"
+import { RazorpayPayment } from "@/components/razorpay-payment"
 
 export function ActiveLoanCard() {
   const paid = 45
   const remaining = 100 - paid
+
+  const handlePaymentSuccess = (paymentId: string) => {
+    console.log("Payment successful with ID:", paymentId)
+    alert(`Payment successful! Payment ID: ${paymentId}`)
+  }
+
+  const handlePaymentError = (error: string) => {
+    console.error("Payment failed:", error)
+    alert(`Payment failed: ${error}`)
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -44,7 +55,15 @@ export function ActiveLoanCard() {
               <div className="font-medium">$220</div>
             </div>
           </div>
-          <Button className="bg-primary text-primary-foreground hover:opacity-90">Pay Next EMI</Button>
+          <RazorpayPayment
+            amount={220}
+            currency="INR"
+            onSuccess={handlePaymentSuccess}
+            onError={handlePaymentError}
+            className="bg-primary text-primary-foreground hover:opacity-90"
+          >
+            Pay Next EMI
+          </RazorpayPayment>
         </div>
       </CardContent>
     </Card>
