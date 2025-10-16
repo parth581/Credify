@@ -6,6 +6,7 @@ import { ActiveLoanCard } from "@/components/borrower/active-loan-card"
 import { NewLoanDialog } from "@/components/borrower/new-loan-dialog"
 import { RazorpayPayment } from "@/components/razorpay-payment"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { BackButton } from "@/components/ui/back-button"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -134,6 +135,9 @@ export default function BorrowerDashboard() {
       <div className="flex min-h-screen">
         <BorrowerSidebar active={active} />
         <main className="mx-auto flex-1 space-y-6 p-6">
+          <div>
+            <BackButton />
+          </div>
           {active === "Overview" && <Overview />}
           {active === "Payments" && <Payments />}
           {active === "Settings" && <Settings />}

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DonutChart } from "@/components/charts/donut"
 import { BarBasicChart } from "@/components/charts/bar-basic"
 import { Badge } from "@/components/ui/badge"
+import { BackButton } from "@/components/ui/back-button"
 
 const marketplace = [
   { id: "BRW-1024", amount: 3000, purpose: "Bike for delivery", rate: 12, duration: 12, distance: "2.1 km" },
@@ -285,6 +286,9 @@ export default function LenderDashboard() {
       <div className="flex min-h-screen">
         <LenderSidebar active={active} />
         <main className="flex-1 space-y-6 p-6">
+          <div>
+            <BackButton />
+          </div>
           {active === "Marketplace" && <MarketplaceSection />}
           {active === "My Portfolio" && <PortfolioSection />}
           {active === "Payments" && <PaymentsSection />}
