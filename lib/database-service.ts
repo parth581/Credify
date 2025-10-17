@@ -120,7 +120,7 @@ export const borrowerService = {
     }
   },
 
-  // Get borrower profile
+  // Get borrower profile by UID
   async getBorrowerProfile(uid: string) {
     try {
       const borrowerRef = doc(db, 'borrowers', uid)
@@ -143,6 +143,35 @@ export const borrowerService = {
         success: false,
         error: error.message,
         message: 'Failed to get borrower profile'
+      }
+    }
+  },
+
+  // Get borrower profile by email (to prevent duplicates)
+  async getBorrowerProfileByEmail(email: string) {
+    try {
+      const borrowersRef = collection(db, 'borrowers')
+      const q = query(borrowersRef, where('email', '==', email))
+      const querySnapshot = await getDocs(q)
+      
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0]
+        return {
+          success: true,
+          data: { ...doc.data(), uid: doc.id } as BorrowerData,
+          message: 'Borrower profile found by email'
+        }
+      } else {
+        return {
+          success: false,
+          message: 'No borrower profile found with this email'
+        }
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+        message: 'Failed to search borrower profile by email'
       }
     }
   },
@@ -265,6 +294,35 @@ export const lenderService = {
         success: false,
         error: error.message,
         message: 'Failed to get lender profile'
+      }
+    }
+  },
+
+  // Get lender profile by email (to prevent duplicates)
+  async getLenderProfileByEmail(email: string) {
+    try {
+      const lendersRef = collection(db, 'lenders')
+      const q = query(lendersRef, where('email', '==', email))
+      const querySnapshot = await getDocs(q)
+      
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0]
+        return {
+          success: true,
+          data: { ...doc.data(), uid: doc.id } as LenderData,
+          message: 'Lender profile found by email'
+        }
+      } else {
+        return {
+          success: false,
+          message: 'No lender profile found with this email'
+        }
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+        message: 'Failed to search lender profile by email'
       }
     }
   },

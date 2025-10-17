@@ -17,6 +17,9 @@ export default function LenderLoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showKyc, setShowKyc] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("")
+  const [isSendingReset, setIsSendingReset] = useState(false)
   const [hasKyc, setHasKyc] = useState(false)
   const role = "lender" as const
 
@@ -42,7 +45,7 @@ export default function LenderLoginPage() {
     }
 
     try {
-      // Try to sign in with Firebase
+      // Try to sign in with Firebase first
       const result = await authService.signIn(email, password)
       
       if (result.success) {
@@ -52,42 +55,121 @@ export default function LenderLoginPage() {
         if (profileResult.success) {
           // Existing user - check KYC status
           const userData = profileResult.data
-          if (userData.kycCompleted) {
+          if (userData && userData.kycCompleted) {
             alert(`✅ Login successful! Welcome back, Parth!`)
             router.push("/lender")
           } else {
-            alert("✅ Login successful! Please complete KYC verification.")
-            setShowKyc(true)
+            // Check if user has completed KYC in localStorage (for existing users)
+            const hasKycInStorage = localStorage.getItem(`kyc:${role}:${email}`) === "true"
+            if (hasKycInStorage) {
+              // Update Firebase profile to reflect KYC completion
+              try {
+                await lenderService.updateLenderProfile(result.user!.uid, {
+                  kycCompleted: true
+                })
+                alert(`✅ Login successful! Welcome back, Parth!`)
+                router.push("/lender")
+              } catch (error) {
+                console.error("Failed to update KYC status:", error)
+                alert("✅ Login successful! Please complete KYC verification.")
+                setShowKyc(true)
+              }
+            } else {
+              alert("✅ Login successful! Please complete KYC verification.")
+              setShowKyc(true)
+            }
           }
         } else {
-          // New user - create profile and require KYC
-          await lenderService.createLenderProfile({
-            uid: result.user!.uid,
-            email: email,
-            displayName: result.user!.displayName || "Parth",
-            kycCompleted: false
-          })
+          // User exists in Firebase Auth but no profile - check if profile exists with same email
+          const existingProfileResult = await lenderService.getLenderProfileByEmail(email)
           
-          alert("✅ Registration successful! Please complete KYC verification.")
-          setShowKyc(true)
+          if (existingProfileResult.success) {
+            // Profile exists with same email - update UID and redirect
+            await lenderService.updateLenderProfile(existingProfileResult.data!.uid, {
+              uid: result.user!.uid,
+              email: email,
+              displayName: result.user!.displayName || "Parth"
+            })
+            
+            // Check KYC status from existing profile
+            if (existingProfileResult.data!.kycCompleted) {
+              alert(`✅ Login successful! Welcome back, Parth!`)
+              router.push("/lender")
+            } else {
+              alert("✅ Profile linked! Please complete KYC verification.")
+              setShowKyc(true)
+            }
+          } else {
+            // No existing profile - create new one
+            await lenderService.createLenderProfile({
+              uid: result.user!.uid,
+              email: email,
+              displayName: result.user!.displayName || "Parth",
+              kycCompleted: false
+            })
+            
+            alert("✅ Profile created! Please complete KYC verification.")
+            setShowKyc(true)
+          }
         }
       } else {
-        // If sign in fails, try to register
-        const registerResult = await authService.register(email, password, "lender", "Parth")
-        
-        if (registerResult.success) {
-          // Create lender profile with KYC pending
-          await lenderService.createLenderProfile({
-            uid: registerResult.user!.uid,
-            email: email,
-            displayName: "Parth",
-            kycCompleted: false
-          })
-          
-          alert("✅ Registration successful! Please complete KYC verification.")
-          setShowKyc(true)
+        // Sign in failed - try to register a new account
+        if (result.error?.includes('user-not-found') || result.error?.includes('invalid-credential')) {
+          try {
+            const registerResult = await authService.register(email, password, "lender", "Parth")
+            
+            if (registerResult.success) {
+              // Check if profile already exists with this email
+              const existingProfileResult = await lenderService.getLenderProfileByEmail(email)
+              
+              if (existingProfileResult.success) {
+                // Profile exists - update UID and redirect
+                await lenderService.updateLenderProfile(existingProfileResult.data!.uid, {
+                  uid: registerResult.user!.uid,
+                  email: email,
+                  displayName: "Parth"
+                })
+                
+                if (existingProfileResult.data!.kycCompleted) {
+                  alert(`✅ Registration successful! Welcome back, Parth!`)
+                  router.push("/lender")
+                } else {
+                  alert("✅ Profile linked! Please complete KYC verification.")
+                  setShowKyc(true)
+                }
+              } else {
+                // No existing profile - create new one
+                await lenderService.createLenderProfile({
+                  uid: registerResult.user!.uid,
+                  email: email,
+                  displayName: "Parth",
+                  kycCompleted: false
+                })
+                
+                alert("✅ Registration successful! Please complete KYC verification.")
+                setShowKyc(true)
+              }
+            } else {
+              // Handle specific registration errors
+              if (registerResult.error?.includes('email-already-in-use')) {
+                alert("❌ This email is already registered. Please use a different email address or try logging in.")
+              } else {
+                alert(`❌ Registration failed: ${registerResult.error}`)
+              }
+            }
+          } catch (registerError) {
+            console.error("Registration error:", registerError)
+            alert("❌ Registration failed. Please try again.")
+          }
         } else {
-          alert(`❌ ${registerResult.message}: ${registerResult.error}`)
+          // Other sign in errors
+          if (result.error?.includes('wrong-password')) {
+            alert("❌ Incorrect password. Please try again.")
+          } else if (result.error?.includes('invalid-email')) {
+            alert("❌ Invalid email format. Please check your email.")
+          } else {
+            alert(`❌ Login failed: ${result.error}`)
+          }
         }
       }
     } catch (error) {
@@ -104,6 +186,45 @@ export default function LenderLoginPage() {
       setShowKyc(true)
     }
   }
+
+  // ✅ Forgot Password Function
+  const handleForgotPassword = async () => {
+    if (!forgotPasswordEmail.trim()) {
+      alert("Please enter your email address.")
+      return
+    }
+
+    const emailValid = /^(?:[a-zA-Z0-9_'^&\+`{}~!-]+(?:\.[a-zA-Z0-9_'^&\+`{}~!-]+)*|\"(?:[^\"\\]|\\.)+\")@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/.test(
+      forgotPasswordEmail.trim(),
+    )
+
+    if (!emailValid) {
+      alert("Please enter a valid email address.")
+      return
+    }
+
+    setIsSendingReset(true)
+    try {
+      const result = await authService.sendPasswordReset(forgotPasswordEmail)
+      
+      if (result.success) {
+        alert(`✅ Password reset email sent to ${forgotPasswordEmail}\nPlease check your inbox and follow the instructions to reset your password.`)
+        setShowForgotPassword(false)
+        setForgotPasswordEmail("")
+      } else {
+        if (result.error?.includes('user-not-found')) {
+          alert("❌ No account found with this email address.")
+        } else {
+          alert(`❌ ${result.message}: ${result.error}`)
+        }
+      }
+    } catch (error) {
+      console.error("Password reset error:", error)
+      alert("❌ Failed to send password reset email. Please try again.")
+    } finally {
+      setIsSendingReset(false)
+    }
+  };
 
   return (
     <main className="relative mx-auto max-w-xl space-y-6 px-4 py-12">
@@ -168,6 +289,15 @@ export default function LenderLoginPage() {
               Login with Photo
             </Button>
           </div>
+
+          <div className="text-center">
+            <button 
+              onClick={() => setShowForgotPassword(true)}
+              className="text-sm text-muted-foreground hover:text-primary underline"
+            >
+              Forgot Password?
+            </button>
+          </div>
           {!hasKyc && (
             <div className="text-xs text-muted-foreground">
               KYC is required once. After completion, you can login using your photo.
@@ -175,6 +305,52 @@ export default function LenderLoginPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* ✅ Forgot Password Modal */}
+      {showForgotPassword && (
+        <Card className="transition-all duration-300 hover:shadow-lg hover:ring-1 hover:ring-primary/30">
+          <CardContent className="space-y-4 p-6">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold">Reset Password</h3>
+              <p className="text-sm text-muted-foreground">
+                Enter your email address and we'll send you a password reset link.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Enter your email address"
+                  type="email"
+                  value={forgotPasswordEmail}
+                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleForgotPassword}
+                  disabled={isSendingReset}
+                  className="flex-1 bg-primary text-primary-foreground"
+                >
+                  {isSendingReset ? "Sending..." : "Send Reset Email"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowForgotPassword(false)
+                    setForgotPasswordEmail("")
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {showKyc && (
         <div className="space-y-4">
@@ -188,12 +364,24 @@ export default function LenderLoginPage() {
               try {
                 const currentUser = authService.getCurrentUser()
                 if (currentUser) {
-                  await lenderService.updateLenderProfile(currentUser.uid, {
+                  console.log("Updating KYC status for user:", currentUser.uid)
+                  const updateResult = await lenderService.updateLenderProfile(currentUser.uid, {
                     kycCompleted: true
                   })
+                  
+                  if (updateResult.success) {
+                    console.log("✅ KYC status updated in Firebase database")
+                  } else {
+                    console.error("❌ Failed to update KYC status:", updateResult.message)
+                    alert("⚠️ KYC verified but database update failed. Please contact support.")
+                  }
+                } else {
+                  console.error("❌ No current user found for KYC update")
+                  alert("⚠️ KYC verified but user session not found. Please try logging in again.")
                 }
               } catch (error) {
-                console.error("Failed to update KYC status in database:", error)
+                console.error("❌ Failed to update KYC status in database:", error)
+                alert("⚠️ KYC verified but database update failed. Please contact support.")
               }
               
               // Redirect post-KYC
