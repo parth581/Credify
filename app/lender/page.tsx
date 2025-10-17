@@ -13,22 +13,22 @@ import { Badge } from "@/components/ui/badge"
 import { BackButton } from "@/components/ui/back-button"
 
 const marketplace = [
-  { id: "BRW-1024", amount: 3000, purpose: "Bike for delivery", rate: 12, duration: 12, distance: "2.1 km" },
-  { id: "BRW-2048", amount: 8500, purpose: "Coffee cart expansion", rate: 14, duration: 18, distance: "5.3 km" },
-  { id: "BRW-4096", amount: 12000, purpose: "Home renovation", rate: 11, duration: 24, distance: "1.8 km" },
+  { id: "BRW-1024", amount: 300000, purpose: "Bike for delivery", rate: 12, duration: 12, distance: "2.1 km" },
+  { id: "BRW-2048", amount: 850000, purpose: "Coffee cart expansion", rate: 14, duration: 18, distance: "5.3 km" },
+  { id: "BRW-4096", amount: 1200000, purpose: "Home renovation", rate: 11, duration: 24, distance: "1.8 km" },
 ]
 
 const portfolioStats = [
-  { label: "Total Investment", value: "$27,300" },
+  { label: "Total Investment", value: "₹45.6L" },
   { label: "Active Loans", value: "12" },
   { label: "Avg Interest Rate", value: "12.7%" },
-  { label: "Total Returns", value: "$3,420" },
+  { label: "Total Returns", value: "₹5.7L" },
 ]
 
 function MarketplaceSection() {
   const handleFundingSuccess = (paymentId: string, loanId: string, amount: number) => {
     console.log("Funding successful:", { paymentId, loanId, amount })
-    alert(`Loan funded successfully! Payment ID: ${paymentId}\nLoan ID: ${loanId}\nAmount: $${amount}`)
+    alert(`Loan funded successfully! Payment ID: ${paymentId}\nLoan ID: ${loanId}\nAmount: ₹${amount.toLocaleString()}`)
   }
 
   const handleFundingError = (error: string) => {
@@ -57,9 +57,9 @@ function MarketplaceSection() {
               <SelectValue placeholder="Loan amount" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="0-5k">$0 - $5k</SelectItem>
-              <SelectItem value="5-10k">$5k - $10k</SelectItem>
-              <SelectItem value="10k+">$10k+</SelectItem>
+              <SelectItem value="0-5k">₹0 - ₹5L</SelectItem>
+              <SelectItem value="5-10k">₹5L - ₹10L</SelectItem>
+              <SelectItem value="10k+">₹10L+</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -79,7 +79,7 @@ function MarketplaceSection() {
               <div className="grid grid-cols-3 gap-3 text-sm">
                 <div>
                   <div className="text-muted-foreground">Amount</div>
-                  <div className="font-medium">${m.amount.toLocaleString()}</div>
+                  <div className="font-medium">₹{m.amount.toLocaleString()}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Rate</div>
@@ -94,7 +94,7 @@ function MarketplaceSection() {
                 <Button variant="outline">View Details</Button>
                 <RazorpayPayment
                   amount={m.amount}
-                  currency="USD"
+                  currency="INR"
                   onSuccess={(paymentId) => handleFundingSuccess(paymentId, m.id, m.amount)}
                   onError={handleFundingError}
                   className="bg-primary text-primary-foreground hover:opacity-90"
@@ -176,9 +176,9 @@ function PortfolioSection() {
             </thead>
             <tbody>
               {[
-                { id: "BRW-1024", repaid: "$1,200", next: "2025-10-15", status: "On Track" },
-                { id: "BRW-2048", repaid: "$5,600", next: "2025-10-20", status: "Delayed" },
-                { id: "BRW-4096", repaid: "$9,300", next: "2025-10-10", status: "On Track" },
+                { id: "BRW-1024", repaid: "₹1.5L", next: "2025-10-15", status: "On Track" },
+                { id: "BRW-2048", repaid: "₹6.2L", next: "2025-10-20", status: "Delayed" },
+                { id: "BRW-4096", repaid: "₹10.5L", next: "2025-10-10", status: "On Track" },
               ].map((row) => (
                 <tr key={row.id} className="border-t border-border/70">
                   <td className="px-3 py-2">{row.id}</td>
@@ -223,9 +223,9 @@ function PaymentsSection() {
             </thead>
             <tbody>
               {[
-                { date: "2025-09-30", amount: "$320", status: "Settled" },
-                { date: "2025-08-31", amount: "$305", status: "Settled" },
-                { date: "2025-07-31", amount: "$298", status: "Settled" },
+                { date: "2025-09-30", amount: "₹2.4L", status: "Settled" },
+                { date: "2025-08-31", amount: "₹1.8L", status: "Settled" },
+                { date: "2025-07-31", amount: "₹3.2L", status: "Settled" },
               ].map((r) => (
                 <tr key={r.date} className="border-t border-border/70">
                   <td className="px-3 py-2">{r.date}</td>

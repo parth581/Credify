@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Mail, Lock, ShieldCheck } from "lucide-react"
 import { GoogleGenerativeAI } from "@google/generative-ai"
+import { authService } from "@/lib/auth-service"
+import { borrowerService } from "@/lib/database-service"
 
 export default function BorrowerLoginPage() {
   const router = useRouter()
@@ -30,8 +32,8 @@ export default function BorrowerLoginPage() {
     }
   }, [email, role])
 
-  // ✅ Sign In Logic
-  const signIn = () => {
+  // ✅ Sign In Logic with Firebase and KYC
+  const signIn = async () => {
     const emailValid = /^(?:[a-zA-Z0-9_'^&\+`{}~!-]+(?:\.[a-zA-Z0-9_'^&\+`{}~!-]+)*|\"(?:[^\"\\]|\\.)+\")@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/.test(
       email.trim(),
     )
@@ -48,16 +50,58 @@ export default function BorrowerLoginPage() {
       return
     }
 
-    if (email && password) {
-      const kycStatus = localStorage.getItem(`kyc:${role}:${email}`) === "true"
-      if (!kycStatus) {
-        alert("KYC required. Please complete it once.")
-        setKycInProgress(true)
+    try {
+      // Try to sign in with Firebase
+      const result = await authService.signIn(email, password)
+      
+      if (result.success) {
+        // Check if borrower profile exists
+        const profileResult = await borrowerService.getBorrowerProfile(result.user!.uid)
+        
+        if (profileResult.success) {
+          // Existing user - check KYC status
+          const userData = profileResult.data
+          if (userData && userData.kycCompleted) {
+            alert(`✅ Login successful! Welcome back, Parth!`)
+            router.push("/borrower")
+          } else {
+            alert("✅ Login successful! Please complete KYC verification.")
+            setKycInProgress(true)
+          }
+        } else {
+          // New user - create profile and require KYC
+          await borrowerService.createBorrowerProfile({
+            uid: result.user!.uid,
+            email: email,
+            displayName: result.user!.displayName || "Parth",
+            kycCompleted: false
+          })
+          
+          alert("✅ Registration successful! Please complete KYC verification.")
+          setKycInProgress(true)
+        }
       } else {
-        router.push("/borrower")
+        // If sign in fails, try to register
+        const registerResult = await authService.register(email, password, "borrower", "Parth")
+        
+        if (registerResult.success) {
+          // Create borrower profile with KYC pending
+          await borrowerService.createBorrowerProfile({
+            uid: registerResult.user!.uid,
+            email: email,
+            displayName: "Parth",
+            kycCompleted: false
+          })
+          
+          alert("✅ Registration successful! Please complete KYC verification.")
+          setKycInProgress(true)
+        } else {
+          alert(`❌ ${registerResult.message}: ${registerResult.error}`)
+        }
       }
-    } else {
-      alert("Please enter email and password")
+    } catch (error) {
+      console.error("Authentication error:", error)
+      alert("❌ Authentication failed. Please try again.")
     }
   }
 
@@ -145,6 +189,19 @@ Your job is to extract and compare faces from two provided images.
       localStorage.setItem(`kyc:${role}:${email}`, "true")
       setHasKyc(true)
       setKycInProgress(false)
+      
+      // Update KYC status in Firebase database
+      try {
+        const currentUser = authService.getCurrentUser()
+        if (currentUser) {
+          await borrowerService.updateBorrowerProfile(currentUser.uid, {
+            kycCompleted: true
+          })
+        }
+      } catch (error) {
+        console.error("Failed to update KYC status in database:", error)
+      }
+      
       router.push("/borrower")
     } else {
       alert(

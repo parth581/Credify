@@ -11,10 +11,34 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 function Overview() {
+  // Loan details from lender marketplace (assuming borrower took BRW-1024)
+  const loanDetails = {
+    id: "BRW-1024",
+    principal: 300000, // ₹3,00,000
+    rate: 12, // 12% per annum
+    duration: 12, // 12 months
+    purpose: "Bike for delivery"
+  }
+
+  // Calculate Simple Interest: SI = (P × R × T) / 100
+  const simpleInterest = (loanDetails.principal * loanDetails.rate * loanDetails.duration) / (100 * 12) // Monthly rate
+  const totalAmount = loanDetails.principal + simpleInterest
+  const monthlyEMI = Math.round(totalAmount / loanDetails.duration)
+
+  // Calculate loan start date (assuming loan started 3 months ago)
+  const loanStartDate = new Date('2025-07-15') // 3 months before first payment
+  const loanStartDateString = loanStartDate.toISOString().split('T')[0]
+
+  // Calculate next EMI date (assuming last payment was 2025-09-15)
+  const lastPaymentDate = new Date('2025-09-15')
+  const nextEMIDate = new Date(lastPaymentDate)
+  nextEMIDate.setMonth(nextEMIDate.getMonth() + 1) // Add 1 month
+  const nextEMIDateString = nextEMIDate.toISOString().split('T')[0] // Format as YYYY-MM-DD
+
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
-        <div className="text-lg font-semibold">Hello, Alex!</div>
+        <div className="text-lg font-semibold">Hello, Parth!</div>
         <NewLoanDialog />
       </header>
       <ActiveLoanCard />
@@ -32,9 +56,9 @@ function Overview() {
               </thead>
               <tbody>
                 {[
-                  { date: "2025-09-15", amount: "$220", status: "Successful" },
-                  { date: "2025-08-15", amount: "$220", status: "Successful" },
-                  { date: "2025-07-15", amount: "$220", status: "Successful" },
+                  { date: "2025-09-15", amount: `₹${monthlyEMI.toLocaleString()}`, status: "Successful" },
+                  { date: "2025-08-15", amount: `₹${monthlyEMI.toLocaleString()}`, status: "Successful" },
+                  { date: "2025-07-15", amount: `₹${monthlyEMI.toLocaleString()}`, status: "Successful" },
                 ].map((row) => (
                   <tr key={row.date} className="border-t border-border/70">
                     <td className="px-3 py-2">{row.date}</td>
@@ -56,6 +80,30 @@ function Overview() {
 }
 
 function Payments() {
+  // Loan details from lender marketplace (assuming borrower took BRW-1024)
+  const loanDetails = {
+    id: "BRW-1024",
+    principal: 300000, // ₹3,00,000
+    rate: 12, // 12% per annum
+    duration: 12, // 12 months
+    purpose: "Bike for delivery"
+  }
+
+  // Calculate Simple Interest: SI = (P × R × T) / 100
+  const simpleInterest = (loanDetails.principal * loanDetails.rate * loanDetails.duration) / (100 * 12) // Monthly rate
+  const totalAmount = loanDetails.principal + simpleInterest
+  const monthlyEMI = Math.round(totalAmount / loanDetails.duration)
+
+  // Calculate loan start date (assuming loan started 3 months ago)
+  const loanStartDate = new Date('2025-07-15') // 3 months before first payment
+  const loanStartDateString = loanStartDate.toISOString().split('T')[0]
+
+  // Calculate next EMI date (assuming last payment was 2025-09-15)
+  const lastPaymentDate = new Date('2025-09-15')
+  const nextEMIDate = new Date(lastPaymentDate)
+  nextEMIDate.setMonth(nextEMIDate.getMonth() + 1) // Add 1 month
+  const nextEMIDateString = nextEMIDate.toISOString().split('T')[0] // Format as YYYY-MM-DD
+
   const handlePaymentSuccess = (paymentId: string) => {
     console.log("Payment successful with ID:", paymentId)
     // You can add success notification or redirect logic here
@@ -75,10 +123,11 @@ function Payments() {
           <CardTitle>Upcoming Payment</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="text-sm text-muted-foreground">Next EMI: 2025-10-15</div>
-          <div className="text-sm text-muted-foreground">Amount: ₹220</div>
+          <div className="text-sm text-muted-foreground">Loan Start Date: {loanStartDateString}</div>
+          <div className="text-sm text-muted-foreground">Next EMI: {nextEMIDateString}</div>
+          <div className="text-sm text-muted-foreground">Amount: ₹{monthlyEMI.toLocaleString()}</div>
           <RazorpayPayment
-            amount={220}
+            amount={monthlyEMI}
             currency="INR"
             onSuccess={handlePaymentSuccess}
             onError={handlePaymentError}

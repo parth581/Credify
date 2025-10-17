@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Mail, Lock, Shield } from "lucide-react"
 import { KycFlow } from "@/components/kyc/kyc-flow"
+import { authService } from "@/lib/auth-service"
+import { lenderService } from "@/lib/database-service"
 
 export default function LenderLoginPage() {
   const router = useRouter()
@@ -22,7 +24,7 @@ export default function LenderLoginPage() {
     setHasKyc(localStorage.getItem(`kyc:${role}`) === "true")
   }, [])
 
-  const signIn = () => {
+  const signIn = async () => {
     const emailValid = /^(?:[a-zA-Z0-9_'^&\+`{}~!-]+(?:\.[a-zA-Z0-9_'^&\+`{}~!-]+)*|\"(?:[^\"\\]|\\.)+\")@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/.test(
       email.trim(),
     )
@@ -39,12 +41,59 @@ export default function LenderLoginPage() {
       return
     }
 
-    if (!hasKyc) {
-      setShowKyc(true)
-      return
+    try {
+      // Try to sign in with Firebase
+      const result = await authService.signIn(email, password)
+      
+      if (result.success) {
+        // Check if lender profile exists
+        const profileResult = await lenderService.getLenderProfile(result.user!.uid)
+        
+        if (profileResult.success) {
+          // Existing user - check KYC status
+          const userData = profileResult.data
+          if (userData.kycCompleted) {
+            alert(`✅ Login successful! Welcome back, Parth!`)
+            router.push("/lender")
+          } else {
+            alert("✅ Login successful! Please complete KYC verification.")
+            setShowKyc(true)
+          }
+        } else {
+          // New user - create profile and require KYC
+          await lenderService.createLenderProfile({
+            uid: result.user!.uid,
+            email: email,
+            displayName: result.user!.displayName || "Parth",
+            kycCompleted: false
+          })
+          
+          alert("✅ Registration successful! Please complete KYC verification.")
+          setShowKyc(true)
+        }
+      } else {
+        // If sign in fails, try to register
+        const registerResult = await authService.register(email, password, "lender", "Parth")
+        
+        if (registerResult.success) {
+          // Create lender profile with KYC pending
+          await lenderService.createLenderProfile({
+            uid: registerResult.user!.uid,
+            email: email,
+            displayName: "Parth",
+            kycCompleted: false
+          })
+          
+          alert("✅ Registration successful! Please complete KYC verification.")
+          setShowKyc(true)
+        } else {
+          alert(`❌ ${registerResult.message}: ${registerResult.error}`)
+        }
+      }
+    } catch (error) {
+      console.error("Authentication error:", error)
+      alert("❌ Authentication failed. Please try again.")
     }
-    // Mock email/password acceptance
-    router.push("/lender")
   }
 
   const photoLogin = () => {
@@ -131,9 +180,22 @@ export default function LenderLoginPage() {
         <div className="space-y-4">
           <KycFlow
             role={role}
-            onDone={() => {
+            onDone={async () => {
               setHasKyc(true)
               setShowKyc(false)
+              
+              // Update KYC status in Firebase database
+              try {
+                const currentUser = authService.getCurrentUser()
+                if (currentUser) {
+                  await lenderService.updateLenderProfile(currentUser.uid, {
+                    kycCompleted: true
+                  })
+                }
+              } catch (error) {
+                console.error("Failed to update KYC status in database:", error)
+              }
+              
               // Redirect post-KYC
               router.push("/lender")
             }}
