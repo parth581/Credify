@@ -11,6 +11,8 @@ import { Mail, Lock, Shield } from "lucide-react"
 import { KycFlow } from "@/components/kyc/kyc-flow"
 import { authService } from "@/lib/auth-service"
 import { lenderService } from "@/lib/database-service"
+import { otpService } from "@/lib/otp-service"
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 
 export default function LenderLoginPage() {
   const router = useRouter()
@@ -22,6 +24,10 @@ export default function LenderLoginPage() {
   const [isSendingReset, setIsSendingReset] = useState(false)
   const [hasKyc, setHasKyc] = useState(false)
   const role = "lender" as const
+  const [otpStep, setOtpStep] = useState(false)
+  const [isSendingOtp, setIsSendingOtp] = useState(false)
+  const [otp, setOtp] = useState("")
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
 
   useEffect(() => {
     setHasKyc(localStorage.getItem(`kyc:${role}`) === "true")
@@ -49,68 +55,15 @@ export default function LenderLoginPage() {
       const result = await authService.signIn(email, password)
       
       if (result.success) {
-        // Check if lender profile exists
-        const profileResult = await lenderService.getLenderProfile(result.user!.uid)
-        
-        if (profileResult.success) {
-          // Existing user - check KYC status
-          const userData = profileResult.data
-          if (userData && userData.kycCompleted) {
-            alert(`✅ Login successful! Welcome back, Parth!`)
-            router.push("/lender")
-          } else {
-            // Check if user has completed KYC in localStorage (for existing users)
-            const hasKycInStorage = localStorage.getItem(`kyc:${role}:${email}`) === "true"
-            if (hasKycInStorage) {
-              // Update Firebase profile to reflect KYC completion
-              try {
-                await lenderService.updateLenderProfile(result.user!.uid, {
-                  kycCompleted: true
-                })
-                alert(`✅ Login successful! Welcome back, Parth!`)
-                router.push("/lender")
-              } catch (error) {
-                console.error("Failed to update KYC status:", error)
-                alert("✅ Login successful! Please complete KYC verification.")
-                setShowKyc(true)
-              }
-            } else {
-              alert("✅ Login successful! Please complete KYC verification.")
-              setShowKyc(true)
-            }
-          }
+        // Start OTP step for lender login
+        setIsSendingOtp(true)
+        const sendRes = await otpService.sendLoginOtp(email)
+        setIsSendingOtp(false)
+        if (sendRes.success) {
+          setOtpStep(true)
+          alert("An OTP has been sent to your email. Please enter it to continue.")
         } else {
-          // User exists in Firebase Auth but no profile - check if profile exists with same email
-          const existingProfileResult = await lenderService.getLenderProfileByEmail(email)
-          
-          if (existingProfileResult.success) {
-            // Profile exists with same email - update UID and redirect
-            await lenderService.updateLenderProfile(existingProfileResult.data!.uid, {
-              uid: result.user!.uid,
-              email: email,
-              displayName: result.user!.displayName || "Parth"
-            })
-            
-            // Check KYC status from existing profile
-            if (existingProfileResult.data!.kycCompleted) {
-              alert(`✅ Login successful! Welcome back, Parth!`)
-              router.push("/lender")
-            } else {
-              alert("✅ Profile linked! Please complete KYC verification.")
-              setShowKyc(true)
-            }
-          } else {
-            // No existing profile - create new one
-            await lenderService.createLenderProfile({
-              uid: result.user!.uid,
-              email: email,
-              displayName: result.user!.displayName || "Parth",
-              kycCompleted: false
-            })
-            
-            alert("✅ Profile created! Please complete KYC verification.")
-            setShowKyc(true)
-          }
+          alert(`❌ Failed to send OTP: ${sendRes.message}`)
         }
       } else {
         // Sign in failed - try to register a new account
@@ -175,6 +128,84 @@ export default function LenderLoginPage() {
     } catch (error) {
       console.error("Authentication error:", error)
       alert("❌ Authentication failed. Please try again.")
+    }
+  }
+
+  const handleVerifyOtp = async () => {
+    if (otp.length !== 6) {
+      alert("Please enter the 6-digit OTP.")
+      return
+    }
+    setIsVerifyingOtp(true)
+    const res = await otpService.verifyLoginOtp(email, otp)
+    setIsVerifyingOtp(false)
+    if (!res.success) {
+      alert(`❌ ${res.message}`)
+      return
+    }
+    // Proceed with prior post-sign-in flow now that OTP is verified
+    try {
+      const currentUser = authService.getCurrentUser()
+      if (!currentUser) {
+        alert("Session expired. Please sign in again.")
+        setOtpStep(false)
+        return
+      }
+
+      const profileResult = await lenderService.getLenderProfile(currentUser.uid)
+      if (profileResult.success) {
+        const userData = profileResult.data
+        if (userData && userData.kycCompleted) {
+          alert(`✅ Login successful! Welcome back, Parth!`)
+          router.push("/lender")
+        } else {
+          const hasKycInStorage = localStorage.getItem(`kyc:${role}:${email}`) === "true"
+          if (hasKycInStorage) {
+            try {
+              await lenderService.updateLenderProfile(currentUser.uid, { kycCompleted: true })
+              alert(`✅ Login successful! Welcome back, Parth!`)
+              router.push("/lender")
+            } catch (error) {
+              console.error("Failed to update KYC status:", error)
+              alert("✅ Login successful! Please complete KYC verification.")
+              setShowKyc(true)
+            }
+          } else {
+            alert("✅ Login successful! Please complete KYC verification.")
+            setShowKyc(true)
+          }
+        }
+      } else {
+        const existingProfileResult = await lenderService.getLenderProfileByEmail(email)
+        if (existingProfileResult.success) {
+          await lenderService.updateLenderProfile(existingProfileResult.data!.uid, {
+            uid: currentUser.uid,
+            email: email,
+            displayName: currentUser.displayName || "Parth"
+          })
+          if (existingProfileResult.data!.kycCompleted) {
+            alert(`✅ Login successful! Welcome back, Parth!`)
+            router.push("/lender")
+          } else {
+            alert("✅ Profile linked! Please complete KYC verification.")
+            setShowKyc(true)
+          }
+        } else {
+          await lenderService.createLenderProfile({
+            uid: currentUser.uid,
+            email: email,
+            displayName: currentUser.displayName || "Parth",
+            kycCompleted: false
+          })
+          alert("✅ Profile created! Please complete KYC verification.")
+          setShowKyc(true)
+        }
+      }
+      setOtpStep(false)
+      setOtp("")
+    } catch (e) {
+      console.error(e)
+      alert("Something went wrong after OTP verification. Please try again.")
     }
   }
 
@@ -279,8 +310,8 @@ export default function LenderLoginPage() {
             </Tooltip>
           </TooltipProvider>
           <div className="flex flex-wrap gap-3">
-            <Button onClick={signIn} className="bg-primary text-primary-foreground transition-transform duration-200 hover:scale-[1.01]">
-              Sign In
+            <Button onClick={signIn} disabled={isSendingOtp} className="bg-primary text-primary-foreground transition-transform duration-200 hover:scale-[1.01]">
+              {isSendingOtp ? 'Sending OTP...' : 'Sign In'}
             </Button>
             <Button variant="outline" onClick={() => setShowKyc(true)}>
               Start KYC
@@ -347,6 +378,47 @@ export default function LenderLoginPage() {
                   Cancel
                 </Button>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ✅ OTP Step */}
+      {otpStep && (
+        <Card className="transition-all duration-300 hover:shadow-lg hover:ring-1 hover:ring-primary/30">
+          <CardContent className="space-y-4 p-6">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold">Enter OTP</h3>
+              <p className="text-sm text-muted-foreground">We sent a 6-digit code to {email}.</p>
+            </div>
+            <div className="flex justify-center">
+              <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleVerifyOtp} disabled={isVerifyingOtp || otp.length !== 6} className="flex-1 bg-primary text-primary-foreground">
+                {isVerifyingOtp ? 'Verifying...' : 'Verify OTP'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  setIsSendingOtp(true)
+                  const resend = await otpService.sendLoginOtp(email)
+                  setIsSendingOtp(false)
+                  if (resend.success) alert('OTP resent. Please check your email.')
+                  else alert(`Failed to resend OTP: ${resend.message}`)
+                }}
+              >
+                Resend
+              </Button>
             </div>
           </CardContent>
         </Card>

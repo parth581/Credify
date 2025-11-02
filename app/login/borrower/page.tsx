@@ -11,6 +11,8 @@ import { Mail, Lock, ShieldCheck } from "lucide-react"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { authService } from "@/lib/auth-service"
 import { borrowerService } from "@/lib/database-service"
+import { otpService } from "@/lib/otp-service"
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 
 export default function BorrowerLoginPage() {
   const router = useRouter()
@@ -27,6 +29,10 @@ export default function BorrowerLoginPage() {
   const [isSendingReset, setIsSendingReset] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const role = "borrower" as const
+  const [otpStep, setOtpStep] = useState(false)
+  const [isSendingOtp, setIsSendingOtp] = useState(false)
+  const [otp, setOtp] = useState("")
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false)
 
   // ✅ Check email-specific KYC status
   useEffect(() => {
@@ -35,7 +41,7 @@ export default function BorrowerLoginPage() {
     }
   }, [email, role])
 
-  // ✅ Sign In Logic with Firebase and KYC
+  // ✅ Sign In Logic with Firebase and OTP (before KYC)
   const signIn = async () => {
     const emailValid = /^(?:[a-zA-Z0-9_'^&\+`{}~!-]+(?:\.[a-zA-Z0-9_'^&\+`{}~!-]+)*|\"(?:[^\"\\]|\\.)+\")@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/.test(
       email.trim(),
@@ -58,68 +64,15 @@ export default function BorrowerLoginPage() {
       const result = await authService.signIn(email, password)
       
       if (result.success) {
-        // Check if borrower profile exists
-        const profileResult = await borrowerService.getBorrowerProfile(result.user!.uid)
-        
-        if (profileResult.success) {
-          // Existing user - check KYC status
-          const userData = profileResult.data
-          if (userData && userData.kycCompleted) {
-            alert(`✅ Login successful! Welcome back, Parth!`)
-            router.push("/borrower")
-          } else {
-            // Check if user has completed KYC in localStorage (for existing users)
-            const hasKycInStorage = localStorage.getItem(`kyc:${role}:${email}`) === "true"
-            if (hasKycInStorage) {
-              // Update Firebase profile to reflect KYC completion
-              try {
-                await borrowerService.updateBorrowerProfile(result.user!.uid, {
-                  kycCompleted: true
-                })
-                alert(`✅ Login successful! Welcome back, Parth!`)
-                router.push("/borrower")
-              } catch (error) {
-                console.error("Failed to update KYC status:", error)
-                alert("✅ Login successful! Please complete KYC verification.")
-                setKycInProgress(true)
-              }
-            } else {
-              alert("✅ Login successful! Please complete KYC verification.")
-              setKycInProgress(true)
-            }
-          }
+        // Start OTP step for borrower login
+        setIsSendingOtp(true)
+        const sendRes = await otpService.sendLoginOtp(email)
+        setIsSendingOtp(false)
+        if (sendRes.success) {
+          setOtpStep(true)
+          alert("An OTP has been sent to your email. Please enter it to continue.")
         } else {
-          // User exists in Firebase Auth but no profile - check if profile exists with same email
-          const existingProfileResult = await borrowerService.getBorrowerProfileByEmail(email)
-          
-          if (existingProfileResult.success) {
-            // Profile exists with same email - update UID and redirect
-            await borrowerService.updateBorrowerProfile(existingProfileResult.data!.uid, {
-              uid: result.user!.uid,
-              email: email,
-              displayName: result.user!.displayName || "Parth"
-            })
-            
-            // Check KYC status from existing profile
-            if (existingProfileResult.data!.kycCompleted) {
-              alert(`✅ Login successful! Welcome back, Parth!`)
-              router.push("/borrower")
-            } else {
-              alert("✅ Profile linked! Please complete KYC verification.")
-              setKycInProgress(true)
-            }
-          } else {
-            // No existing profile - create new one
-            await borrowerService.createBorrowerProfile({
-              uid: result.user!.uid,
-              email: email,
-              displayName: result.user!.displayName || "Parth",
-              kycCompleted: false
-            })
-            
-            alert("✅ Profile created! Please complete KYC verification.")
-            setKycInProgress(true)
-          }
+          alert(`❌ Failed to send OTP: ${sendRes.message}`)
         }
       } else {
         // Sign in failed - try to register a new account
@@ -128,35 +81,15 @@ export default function BorrowerLoginPage() {
             const registerResult = await authService.register(email, password, "borrower", "Parth")
             
             if (registerResult.success) {
-              // Check if profile already exists with this email
-              const existingProfileResult = await borrowerService.getBorrowerProfileByEmail(email)
-              
-              if (existingProfileResult.success) {
-                // Profile exists - update UID and redirect
-                await borrowerService.updateBorrowerProfile(existingProfileResult.data!.uid, {
-                  uid: registerResult.user!.uid,
-                  email: email,
-                  displayName: "Parth"
-                })
-                
-                if (existingProfileResult.data!.kycCompleted) {
-                  alert(`✅ Registration successful! Welcome back, Parth!`)
-                  router.push("/borrower")
-                } else {
-                  alert("✅ Profile linked! Please complete KYC verification.")
-                  setKycInProgress(true)
-                }
+              // After registration, enforce OTP before any KYC/profile actions
+              setIsSendingOtp(true)
+              const sendRes = await otpService.sendLoginOtp(email)
+              setIsSendingOtp(false)
+              if (sendRes.success) {
+                setOtpStep(true)
+                alert("An OTP has been sent to your email. Please enter it to continue.")
               } else {
-                // No existing profile - create new one
-                await borrowerService.createBorrowerProfile({
-                  uid: registerResult.user!.uid,
-                  email: email,
-                  displayName: "Parth",
-                  kycCompleted: false
-                })
-                
-                alert("✅ Registration successful! Please complete KYC verification.")
-                setKycInProgress(true)
+                alert(`❌ Failed to send OTP: ${sendRes.message}`)
               }
             } else {
               // Handle specific registration errors
@@ -184,6 +117,84 @@ export default function BorrowerLoginPage() {
     } catch (error) {
       console.error("Authentication error:", error)
       alert("❌ Authentication failed. Please try again.")
+    }
+  }
+
+  const handleVerifyOtp = async () => {
+    if (otp.length !== 6) {
+      alert("Please enter the 6-digit OTP.")
+      return
+    }
+    setIsVerifyingOtp(true)
+    const res = await otpService.verifyLoginOtp(email, otp)
+    setIsVerifyingOtp(false)
+    if (!res.success) {
+      alert(`❌ ${res.message}`)
+      return
+    }
+    // Proceed with original post-sign-in borrower flow
+    try {
+      const currentUser = authService.getCurrentUser()
+      if (!currentUser) {
+        alert("Session expired. Please sign in again.")
+        setOtpStep(false)
+        return
+      }
+
+      const profileResult = await borrowerService.getBorrowerProfile(currentUser.uid)
+      if (profileResult.success) {
+        const userData = profileResult.data
+        if (userData && userData.kycCompleted) {
+          alert(`✅ Login successful! Welcome back, Parth!`)
+          router.push("/borrower")
+        } else {
+          const hasKycInStorage = localStorage.getItem(`kyc:${role}:${email}`) === "true"
+          if (hasKycInStorage) {
+            try {
+              await borrowerService.updateBorrowerProfile(currentUser.uid, { kycCompleted: true })
+              alert(`✅ Login successful! Welcome back, Parth!`)
+              router.push("/borrower")
+            } catch (error) {
+              console.error("Failed to update KYC status:", error)
+              alert("✅ Login successful! Please complete KYC verification.")
+              setKycInProgress(true)
+            }
+          } else {
+            alert("✅ Login successful! Please complete KYC verification.")
+            setKycInProgress(true)
+          }
+        }
+      } else {
+        const existingProfileResult = await borrowerService.getBorrowerProfileByEmail(email)
+        if (existingProfileResult.success) {
+          await borrowerService.updateBorrowerProfile(existingProfileResult.data!.uid, {
+            uid: currentUser.uid,
+            email: email,
+            displayName: currentUser.displayName || "Parth"
+          })
+          if (existingProfileResult.data!.kycCompleted) {
+            alert(`✅ Login successful! Welcome back, Parth!`)
+            router.push("/borrower")
+          } else {
+            alert("✅ Profile linked! Please complete KYC verification.")
+            setKycInProgress(true)
+          }
+        } else {
+          await borrowerService.createBorrowerProfile({
+            uid: currentUser.uid,
+            email: email,
+            displayName: currentUser.displayName || "Parth",
+            kycCompleted: false
+          })
+          alert("✅ Profile created! Please complete KYC verification.")
+          setKycInProgress(true)
+        }
+      }
+      setOtpStep(false)
+      setOtp("")
+    } catch (e) {
+      console.error(e)
+      alert("Something went wrong after OTP verification. Please try again.")
     }
   }
 
@@ -415,9 +426,10 @@ Your job is to extract and compare faces from two provided images.
 
           <Button
             onClick={signIn}
+            disabled={isSendingOtp}
             className="w-full bg-primary text-primary-foreground transition-transform duration-200 hover:scale-[1.01]"
           >
-            Sign In
+            {isSendingOtp ? "Sending OTP..." : "Sign In"}
           </Button>
 
           <div className="text-center">
@@ -551,6 +563,47 @@ Your job is to extract and compare faces from two provided images.
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* ✅ OTP Step */}
+      {otpStep && (
+        <Card className="transition-all duration-300 hover:shadow-lg hover:ring-1 hover:ring-primary/30">
+          <CardContent className="space-y-4 p-6">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold">Enter OTP</h3>
+              <p className="text-sm text-muted-foreground">We sent a 6-digit code to {email}.</p>
+            </div>
+            <div className="flex justify-center">
+              <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleVerifyOtp} disabled={isVerifyingOtp || otp.length !== 6} className="flex-1 bg-primary text-primary-foreground">
+                {isVerifyingOtp ? 'Verifying...' : 'Verify OTP'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  setIsSendingOtp(true)
+                  const resend = await otpService.sendLoginOtp(email)
+                  setIsSendingOtp(false)
+                  if (resend.success) alert('OTP resent. Please check your email.')
+                  else alert(`Failed to resend OTP: ${resend.message}`)
+                }}
+              >
+                Resend
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </main>
   )
