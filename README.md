@@ -1,3 +1,3 @@
 ## 🏗️ System Architecture
 
-![Architecture Diagram](credify image.png)
+![Architecture Diagram](credifyimage.png)
