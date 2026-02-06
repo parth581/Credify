@@ -1,0 +1,6 @@
+# Try installing from a pre-built wheel first
+# If that fails, you'll need Microsoft C++ Build Tools
+insightface
+onnxruntime>=1.15.0
+pillow>=10.0.0
+numpy>=1.24.0

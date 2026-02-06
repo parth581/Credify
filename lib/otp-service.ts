@@ -4,7 +4,7 @@ import { db } from './firebase'
 export interface OtpRecord {
   email: string
   code: string
-  purpose: 'lender-login'
+  purpose: 'lender-login' | 'borrower-login'
   createdAt: Date
   expiresAt: Date
 }
@@ -28,13 +28,20 @@ async function fetchLatestOtp(email: string, purpose: OtpRecord['purpose']) {
   const q = query(collection(db, 'otps'), where('email', '==', email), where('purpose', '==', purpose))
   const snap = await getDocs(q)
   if (snap.empty) return null
-  // Pick the last by createdAt client-side; serverTimestamp is not exact here for ordering without index
-  let latest: any = null
+  // Get all OTPs and sort by createdAt to get the latest
+  const otps: any[] = []
   snap.forEach((docSnap) => {
     const data = { id: docSnap.id, ...docSnap.data() }
-    if (!latest) latest = data
+    otps.push(data)
   })
-  return latest
+  // Sort by createdAt (most recent first)
+  // Handle both Timestamp objects and date strings
+  otps.sort((a, b) => {
+    const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt ? new Date(a.createdAt).getTime() : 0)
+    const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt ? new Date(b.createdAt).getTime() : 0)
+    return bTime - aTime // Descending order (newest first)
+  })
+  return otps[0] || null // Return the most recent OTP
 }
 
 async function clearOtps(email: string, purpose: OtpRecord['purpose']) {
@@ -45,10 +52,14 @@ async function clearOtps(email: string, purpose: OtpRecord['purpose']) {
 }
 
 export const otpService = {
-  async sendLoginOtp(email: string) {
+  async sendLoginOtp(email: string, role: 'lender' | 'borrower' = 'lender') {
+    const purpose = role === 'lender' ? 'lender-login' : 'borrower-login'
+    // Clear any existing OTPs for this email and purpose before sending a new one
+    await clearOtps(email, purpose)
+    
     const code = generateSixDigitCode()
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000)
-    await storeOtp(email, code, 'lender-login')
+    await storeOtp(email, code, purpose)
 
     // Optional email sending via EmailJS if configured
     const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY
@@ -82,14 +93,15 @@ export const otpService = {
     }
   },
 
-  async verifyLoginOtp(email: string, code: string) {
-    const record = await fetchLatestOtp(email, 'lender-login')
+  async verifyLoginOtp(email: string, code: string, role: 'lender' | 'borrower' = 'lender') {
+    const purpose = role === 'lender' ? 'lender-login' : 'borrower-login'
+    const record = await fetchLatestOtp(email, purpose)
     if (!record) return { success: false, message: 'OTP not found. Please request a new code.' }
 
     const now = Date.now()
     const expMs = record.expiresAt?.toMillis ? record.expiresAt.toMillis() : new Date(record.expiresAt).getTime()
     if (now > expMs) {
-      await clearOtps(email, 'lender-login')
+      await clearOtps(email, purpose)
       return { success: false, message: 'OTP expired. Please request a new code.' }
     }
 
@@ -97,7 +109,7 @@ export const otpService = {
       return { success: false, message: 'Invalid OTP. Please try again.' }
     }
 
-    await clearOtps(email, 'lender-login')
+    await clearOtps(email, purpose)
     return { success: true, message: 'OTP verified' }
   }
 }

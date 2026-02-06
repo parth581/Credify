@@ -11,6 +11,8 @@ import { Mail, Lock, ShieldCheck } from "lucide-react"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { authService } from "@/lib/auth-service"
 import { borrowerService } from "@/lib/database-service"
+import { geminiFaceService } from "@/lib/gemini-face-service"
+import { faceComparisonService } from "@/lib/face-comparison-service"
 import { otpService } from "@/lib/otp-service"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 
@@ -24,6 +26,8 @@ export default function BorrowerLoginPage() {
   const [aadhaarImage, setAadhaarImage] = useState<string | null>(null)
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
   const [isVerifying, setIsVerifying] = useState(false)
+  const [extractedAadhaarFace, setExtractedAadhaarFace] = useState<string | null>(null)
+  const [isExtractingFace, setIsExtractingFace] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("")
   const [isSendingReset, setIsSendingReset] = useState(false)
@@ -41,8 +45,13 @@ export default function BorrowerLoginPage() {
     }
   }, [email, role])
 
-  // ✅ Sign In Logic with Firebase and OTP (before KYC)
+  // ✅ Sign In Logic with Firebase and KYC
   const signIn = async () => {
+    // Prevent double submission
+    if (isSendingOtp) {
+      return
+    }
+
     const emailValid = /^(?:[a-zA-Z0-9_'^&\+`{}~!-]+(?:\.[a-zA-Z0-9_'^&\+`{}~!-]+)*|\"(?:[^\"\\]|\\.)+\")@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/.test(
       email.trim(),
     )
@@ -54,7 +63,7 @@ export default function BorrowerLoginPage() {
     }
     if (!passwordValid) {
       alert(
-        "Password must be at least 8 characters and include uppercase, lowercase, number, and special character.",
+        "Password must be at least 8 characters and include uppercase, lowercase, number, and special character."
       )
       return
     }
@@ -64,15 +73,16 @@ export default function BorrowerLoginPage() {
       const result = await authService.signIn(email, password)
       
       if (result.success) {
-        // Start OTP step for borrower login
+        // Send OTP after successful authentication
         setIsSendingOtp(true)
-        const sendRes = await otpService.sendLoginOtp(email)
+        const otpResult = await otpService.sendLoginOtp(email, 'borrower')
         setIsSendingOtp(false)
-        if (sendRes.success) {
+        
+        if (otpResult.success) {
           setOtpStep(true)
-          alert("An OTP has been sent to your email. Please enter it to continue.")
+          alert(`OTP sent to ${email}\nPlease check your inbox and enter the 6-digit code.`)
         } else {
-          alert(`❌ Failed to send OTP: ${sendRes.message}`)
+          alert(`Failed to send OTP: ${otpResult.message}`)
         }
       } else {
         // Sign in failed - try to register a new account
@@ -81,15 +91,16 @@ export default function BorrowerLoginPage() {
             const registerResult = await authService.register(email, password, "borrower", "Parth")
             
             if (registerResult.success) {
-              // After registration, enforce OTP before any KYC/profile actions
+              // Send OTP after successful registration
               setIsSendingOtp(true)
-              const sendRes = await otpService.sendLoginOtp(email)
+              const otpResult = await otpService.sendLoginOtp(email, 'borrower')
               setIsSendingOtp(false)
-              if (sendRes.success) {
+              
+              if (otpResult.success) {
                 setOtpStep(true)
-                alert("An OTP has been sent to your email. Please enter it to continue.")
+                alert(`OTP sent to ${email}\nPlease check your inbox and enter the 6-digit code.`)
               } else {
-                alert(`❌ Failed to send OTP: ${sendRes.message}`)
+                alert(`Failed to send OTP: ${otpResult.message}`)
               }
             } else {
               // Handle specific registration errors
@@ -126,7 +137,7 @@ export default function BorrowerLoginPage() {
       return
     }
     setIsVerifyingOtp(true)
-    const res = await otpService.verifyLoginOtp(email, otp)
+    const res = await otpService.verifyLoginOtp(email, otp, 'borrower')
     setIsVerifyingOtp(false)
     if (!res.success) {
       alert(`❌ ${res.message}`)
@@ -225,102 +236,128 @@ export default function BorrowerLoginPage() {
     cameraStream?.getTracks().forEach((t) => t.stop())
   }
 
-  // ✅ Gemini Verification Logic
-  const verifyWithGemini = async () => {
-  if (!aadhaarImage || !capturedImage) {
-    alert("Please upload Aadhaar photo and capture your live image.");
+  // ✅ Extract face from Aadhaar using Gemini
+  const extractFaceFromAadhaar = async () => {
+    if (!aadhaarImage) {
+      alert("Please upload Aadhaar photo first.");
+      return;
+    }
+
+    setIsExtractingFace(true);
+    try {
+      console.log("Starting face extraction from Aadhaar...");
+      const result = await geminiFaceService.extractFaceFromAadhaar(aadhaarImage);
+      console.log("Face extraction result:", result);
+      
+      if (result.success && result.croppedFaceImage) {
+        setExtractedAadhaarFace(result.croppedFaceImage);
+        const confidence = (result as any).confidence || "medium";
+        alert(`✅ Face detected in Aadhaar card!\nConfidence: ${confidence}\n\nYou can now proceed to capture your live image.`);
+      } else {
+        const errorMsg = result.error || "Unknown error occurred";
+        console.error("Face extraction failed:", errorMsg);
+        alert(`❌ Failed to extract face:\n${errorMsg}\n\nPlease ensure:\n• The Aadhaar image shows a clear face\n• The image is not blurry\n• Try uploading again`);
+      }
+    } catch (error: any) {
+      console.error("Face extraction error:", error);
+      alert(`❌ Face extraction failed:\n${error.message || "An unexpected error occurred."}\n\nPlease check:\n• Your Gemini API key is set correctly\n• You have internet connection\n• Try again`);
+    } finally {
+      setIsExtractingFace(false);
+    }
+  };
+
+  // ✅ Verify with InsightFace Face Comparison
+  const verifyWithHuggingFace = async () => {
+    if (!extractedAadhaarFace || !capturedImage) {
+      alert("⚠️ Please complete all steps:\n1. Extract face from Aadhaar card\n2. Capture your live image");
     return;
   }
 
   setIsVerifying(true);
   try {
-    const genAI = new GoogleGenerativeAI("AIzaSyBg4av8LfENaabWgid2JuSX8B_fDx1RVuk");
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-    const prompt = `
-You are an expert biometric verification assistant.
-You must behave as a professional AI face verification system that avoids hallucination.
-Your job is to extract and compare faces from two provided images.
-
-### Instructions:
-1. Extract the *face region only* from the Aadhaar image. Ignore text, logos, and background.
-2. Extract the *face region* from the live captured image.
-3. Compare the faces using visual geometry, landmarks, and texture patterns.
-4. Return your output strictly in the following JSON format:
-
-{
-  "similarity": <number between 0 and 100>,
-  "decision": "MATCH" | "NO MATCH",
-  "reason": "<brief reason>"
-}
-
-### Decision criteria:
-- If the faces match with ≥ 90% similarity, return "MATCH".
-- Otherwise, return "NO MATCH".
-`;
-
-    const result = await model.generateContent([
-      { text: prompt },
-      { inlineData: { mimeType: "image/jpeg", data: aadhaarImage.split(",")[1] } },
-      { inlineData: { mimeType: "image/jpeg", data: capturedImage.split(",")[1] } },
-    ]);
-
-    const responseText = (await result.response.text()).trim();
-    console.log("Gemini raw output:", responseText);
-
-    // Try to safely extract JSON content
-    let parsed;
-    try {
-      parsed = JSON.parse(responseText);
-    } catch {
-      const match = responseText.match(/\{[\s\S]*\}/);
-      parsed = match ? JSON.parse(match[0]) : null;
-    }
-
-    if (parsed && parsed.similarity >= 90 && parsed.decision === "MATCH") {
-      alert(`✅ KYC Verified! Similarity: ${parsed.similarity.toFixed(1)}%`)
-      localStorage.setItem(`kyc:${role}:${email}`, "true")
-      setHasKyc(true)
-      setKycInProgress(false)
+      console.log("Starting face comparison...");
       
-      // Update KYC status in Firebase database
-      try {
-        const currentUser = authService.getCurrentUser()
-        if (currentUser) {
-          console.log("Updating KYC status for user:", currentUser.uid)
-          const updateResult = await borrowerService.updateBorrowerProfile(currentUser.uid, {
-            kycCompleted: true
-          })
-          
-          if (updateResult.success) {
-            console.log("✅ KYC status updated in Firebase database")
-          } else {
-            console.error("❌ Failed to update KYC status:", updateResult.message)
-            alert("⚠️ KYC verified but database update failed. Please contact support.")
-          }
+      // Compare faces using InsightFace
+      const comparisonResult = await faceComparisonService.compareFaces(
+        extractedAadhaarFace,
+        capturedImage
+      );
+
+      console.log("Comparison result:", comparisonResult);
+
+      if (!comparisonResult.success) {
+        const errorMsg = comparisonResult.error || "Unknown error occurred";
+        console.error("Face comparison failed:", errorMsg);
+        
+        // Show user-friendly error message
+        if (errorMsg.includes("Python") || errorMsg.includes("script")) {
+          alert("❌ Configuration Error:\nInsightFace service is not available.\nPlease ensure Python is installed and dependencies are set up.\nSee INSIGHTFACE_SETUP.md for instructions.");
+        } else if (errorMsg.includes("No face detected")) {
+          alert(`❌ Verification Failed:\n${errorMsg}\n\nPlease ensure:\n- Both images clearly show your face\n- Good lighting conditions\n- Face is centered and visible\n- Try again`);
         } else {
-          console.error("❌ No current user found for KYC update")
-          alert("⚠️ KYC verified but user session not found. Please try logging in again.")
+          alert(`❌ Verification Failed:\n${errorMsg}\n\nPlease ensure:\n- Both images are clear and show your face\n- Good lighting conditions\n- Try again`);
         }
-      } catch (error) {
-        console.error("❌ Failed to update KYC status in database:", error)
-        alert("⚠️ KYC verified but database update failed. Please contact support.")
+        return;
       }
+
+      const similarity = comparisonResult.similarity || 0;
+      const threshold = 75; // Similarity threshold (75%)
+      const isMatch = comparisonResult.match !== undefined ? comparisonResult.match : similarity >= threshold;
+
+      console.log(`Similarity: ${similarity}%, Match: ${isMatch}, Threshold: ${threshold}%`);
+
+      if (isMatch) {
+        // Success - show similarity percentage
+        alert(`✅ KYC Verification Successful!\n\nSimilarity Score: ${similarity.toFixed(2)}%\nThreshold: ${threshold}%\n\nYour identity has been verified.`);
+        
+        localStorage.setItem(`kyc:${role}:${email}`, "true");
+        setHasKyc(true);
+        setKycInProgress(false);
+        
+        // Clean up extracted face image (temporary storage)
+        setExtractedAadhaarFace(null);
       
-      router.push("/borrower")
-    } else {
-      alert(
-        `❌ Face mismatch. Similarity: ${
-          parsed?.similarity ?? "unknown"
-        }%. Try again.`
-      )
+        // Update KYC status in Firebase database
+        try {
+          const currentUser = authService.getCurrentUser();
+          if (currentUser) {
+            console.log("Updating KYC status for user:", currentUser.uid);
+            const updateResult = await borrowerService.updateBorrowerProfile(currentUser.uid, {
+              kycCompleted: true
+            });
+            
+            if (updateResult.success) {
+              console.log("✅ KYC status updated in Firebase database");
+            } else {
+              console.error("❌ Failed to update KYC status:", updateResult.message);
+              alert("⚠️ KYC verified but database update failed. Please contact support.");
+            }
+          } else {
+            console.error("❌ No current user found for KYC update");
+            alert("⚠️ KYC verified but user session not found. Please try logging in again.");
+          }
+        } catch (error) {
+          console.error("❌ Failed to update KYC status in database:", error);
+          alert("⚠️ KYC verified but database update failed. Please contact support.");
+        }
+      
+        // Always redirect to dashboard after successful KYC verification
+        setTimeout(() => {
+          router.push("/borrower");
+        }, 1000); // Small delay to show success message
+      } else {
+        // Failed - show similarity percentage and helpful message
+        alert(
+          `❌ Face Verification Failed\n\nSimilarity Score: ${similarity.toFixed(2)}%\nRequired Threshold: ${threshold}%\n\nTips to improve:\n• Ensure good lighting\n• Face the camera directly\n• Remove glasses/mask if possible\n• Make sure both images show your full face clearly\n\nPlease try again.`,
+          "error"
+        );
+      }
+    } catch (error: any) {
+      console.error("InsightFace Verification Error:", error);
+      alert(`❌ Verification Error:\n${error.message || "An unexpected error occurred. Please try again later."}\n\nIf this persists, please contact support.`);
+    } finally {
+      setIsVerifying(false);
     }
-  } catch (error) {
-    console.error("Gemini Verification Error:", error);
-    alert("Verification failed. Please try again later.");
-  } finally {
-    setIsVerifying(false);
-  }
   };
 
   // ✅ Forgot Password Function
@@ -504,7 +541,7 @@ Your job is to extract and compare faces from two provided images.
 
               {/* Aadhaar Upload */}
               <div>
-                <p className="text-sm mb-2">Upload your Aadhaar photo:</p>
+                <p className="text-sm mb-2">Step 1: Upload your Aadhaar photo:</p>
                 <Input
                   type="file"
                   accept="image/*"
@@ -512,25 +549,50 @@ Your job is to extract and compare faces from two provided images.
                     const file = e.target.files?.[0]
                     if (file) {
                       const reader = new FileReader()
-                      reader.onload = (r) => setAadhaarImage(r.target?.result as string)
+                      reader.onload = (r) => {
+                        setAadhaarImage(r.target?.result as string)
+                        setExtractedAadhaarFace(null) // Reset extracted face when new Aadhaar is uploaded
+                      }
                       reader.readAsDataURL(file)
                     }
                   }}
                 />
                 {aadhaarImage && (
+                  <div className="mt-3">
                   <img
                     src={aadhaarImage}
                     alt="Aadhaar"
-                    className="mt-3 mx-auto w-48 h-48 object-cover rounded-lg border"
+                      className="mx-auto w-48 h-48 object-cover rounded-lg border"
                   />
+                    <Button
+                      onClick={extractFaceFromAadhaar}
+                      disabled={isExtractingFace}
+                      className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      {isExtractingFace ? "Extracting Face..." : "Step 2: Extract Face from Aadhaar"}
+                    </Button>
+                  </div>
+                )}
+                {extractedAadhaarFace && (
+                  <div className="mt-3 text-center">
+                    <p className="text-sm font-medium mb-2">✅ Extracted Face:</p>
+                    <img
+                      src={extractedAadhaarFace}
+                      alt="Extracted Face"
+                      className="mx-auto w-32 h-32 object-cover rounded-full border-2 border-green-500"
+                    />
+                  </div>
                 )}
               </div>
-
               
               {/* Camera Capture */}
-              <Button onClick={startCamera}>Access Camera</Button>
-              <div className="flex justify-center">
-              { !capturedImage && (
+              <div>
+                <p className="text-sm mb-2">Step 3: Capture your live image:</p>
+                <Button onClick={startCamera} disabled={!extractedAadhaarFace}>
+                  Access Camera
+                </Button>
+                <div className="flex justify-center mt-2">
+                  {!capturedImage && (
     <video
       ref={videoRef}
       autoPlay
@@ -538,27 +600,28 @@ Your job is to extract and compare faces from two provided images.
     />
   )}
 </div>
-<Button onClick={captureImage} disabled={!cameraStream}>
+                <Button onClick={captureImage} disabled={!cameraStream} className="w-full mt-2">
   Capture Image
 </Button>
 
               {capturedImage && (
-                <div className="text-center">
-                  <p className="text-sm font-medium mt-2 mb-1">Captured Image:</p>
+                  <div className="text-center mt-3">
+                    <p className="text-sm font-medium mb-2">Captured Image:</p>
                   <img
                     src={capturedImage}
                     alt="Captured Face"
-                    className="mx-auto w-48 h-48 object-cover rounded-full border"
+                      className="mx-auto w-32 h-32 object-cover rounded-full border-2 border-blue-500"
                   />
                 </div>
               )}
+              </div>
 
               <Button
-                onClick={verifyWithGemini}
-                disabled={isVerifying || !capturedImage || !aadhaarImage}
+                onClick={verifyWithHuggingFace}
+                disabled={isVerifying || !capturedImage || !extractedAadhaarFace}
                 className="w-full bg-green-600 hover:bg-green-700 text-white"
               >
-                {isVerifying ? "Verifying..." : "Verify & Complete KYC"}
+                {isVerifying ? "Verifying with InsightFace..." : "Step 4: Verify & Complete KYC"}
               </Button>
             </CardContent>
           </Card>
@@ -593,13 +656,14 @@ Your job is to extract and compare faces from two provided images.
                 variant="outline"
                 onClick={async () => {
                   setIsSendingOtp(true)
-                  const resend = await otpService.sendLoginOtp(email)
+                  const resend = await otpService.sendLoginOtp(email, 'borrower')
                   setIsSendingOtp(false)
                   if (resend.success) alert('OTP resent. Please check your email.')
                   else alert(`Failed to resend OTP: ${resend.message}`)
                 }}
+                disabled={isSendingOtp}
               >
-                Resend
+                {isSendingOtp ? 'Sending...' : 'Resend'}
               </Button>
             </div>
           </CardContent>

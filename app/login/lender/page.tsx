@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { BackButton } from "@/components/ui/back-button"
@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Mail, Lock, Shield } from "lucide-react"
-import { KycFlow } from "@/components/kyc/kyc-flow"
 import { authService } from "@/lib/auth-service"
 import { lenderService } from "@/lib/database-service"
+import { geminiFaceService } from "@/lib/gemini-face-service"
+import { faceComparisonService } from "@/lib/face-comparison-service"
 import { otpService } from "@/lib/otp-service"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 
@@ -24,6 +25,14 @@ export default function LenderLoginPage() {
   const [isSendingReset, setIsSendingReset] = useState(false)
   const [hasKyc, setHasKyc] = useState(false)
   const role = "lender" as const
+  const [kycInProgress, setKycInProgress] = useState(false)
+  const [capturedImage, setCapturedImage] = useState<string | null>(null)
+  const [aadhaarImage, setAadhaarImage] = useState<string | null>(null)
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [extractedAadhaarFace, setExtractedAadhaarFace] = useState<string | null>(null)
+  const [isExtractingFace, setIsExtractingFace] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const [otpStep, setOtpStep] = useState(false)
   const [isSendingOtp, setIsSendingOtp] = useState(false)
   const [otp, setOtp] = useState("")
@@ -34,6 +43,11 @@ export default function LenderLoginPage() {
   }, [])
 
   const signIn = async () => {
+    // Prevent double submission
+    if (isSendingOtp) {
+      return
+    }
+
     const emailValid = /^(?:[a-zA-Z0-9_'^&\+`{}~!-]+(?:\.[a-zA-Z0-9_'^&\+`{}~!-]+)*|\"(?:[^\"\\]|\\.)+\")@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/.test(
       email.trim(),
     )
@@ -45,7 +59,7 @@ export default function LenderLoginPage() {
     }
     if (!passwordValid) {
       alert(
-        "Password must be at least 8 characters and include uppercase, lowercase, number, and special character.",
+        "Password must be at least 8 characters and include uppercase, lowercase, number, and special character."
       )
       return
     }
@@ -55,15 +69,16 @@ export default function LenderLoginPage() {
       const result = await authService.signIn(email, password)
       
       if (result.success) {
-        // Start OTP step for lender login
+        // Send OTP after successful authentication
         setIsSendingOtp(true)
-        const sendRes = await otpService.sendLoginOtp(email)
+        const otpResult = await otpService.sendLoginOtp(email, 'lender')
         setIsSendingOtp(false)
-        if (sendRes.success) {
+        
+        if (otpResult.success) {
           setOtpStep(true)
-          alert("An OTP has been sent to your email. Please enter it to continue.")
+          alert(`OTP sent to ${email}\nPlease check your inbox and enter the 6-digit code.`)
         } else {
-          alert(`❌ Failed to send OTP: ${sendRes.message}`)
+          alert(`Failed to send OTP: ${otpResult.message}`)
         }
       } else {
         // Sign in failed - try to register a new account
@@ -72,35 +87,16 @@ export default function LenderLoginPage() {
             const registerResult = await authService.register(email, password, "lender", "Parth")
             
             if (registerResult.success) {
-              // Check if profile already exists with this email
-              const existingProfileResult = await lenderService.getLenderProfileByEmail(email)
+              // Send OTP after successful registration
+              setIsSendingOtp(true)
+              const otpResult = await otpService.sendLoginOtp(email, 'lender')
+              setIsSendingOtp(false)
               
-              if (existingProfileResult.success) {
-                // Profile exists - update UID and redirect
-                await lenderService.updateLenderProfile(existingProfileResult.data!.uid, {
-                  uid: registerResult.user!.uid,
-                  email: email,
-                  displayName: "Parth"
-                })
-                
-                if (existingProfileResult.data!.kycCompleted) {
-                  alert(`✅ Registration successful! Welcome back, Parth!`)
-                  router.push("/lender")
-                } else {
-                  alert("✅ Profile linked! Please complete KYC verification.")
-                  setShowKyc(true)
-                }
+              if (otpResult.success) {
+                setOtpStep(true)
+                alert(`OTP sent to ${email}\nPlease check your inbox and enter the 6-digit code.`)
               } else {
-                // No existing profile - create new one
-                await lenderService.createLenderProfile({
-                  uid: registerResult.user!.uid,
-                  email: email,
-                  displayName: "Parth",
-                  kycCompleted: false
-                })
-                
-                alert("✅ Registration successful! Please complete KYC verification.")
-                setShowKyc(true)
+                alert(`Failed to send OTP: ${otpResult.message}`)
               }
             } else {
               // Handle specific registration errors
@@ -137,7 +133,7 @@ export default function LenderLoginPage() {
       return
     }
     setIsVerifyingOtp(true)
-    const res = await otpService.verifyLoginOtp(email, otp)
+    const res = await otpService.verifyLoginOtp(email, otp, 'lender')
     setIsVerifyingOtp(false)
     if (!res.success) {
       alert(`❌ ${res.message}`)
@@ -168,11 +164,11 @@ export default function LenderLoginPage() {
             } catch (error) {
               console.error("Failed to update KYC status:", error)
               alert("✅ Login successful! Please complete KYC verification.")
-              setShowKyc(true)
+              setKycInProgress(true)
             }
           } else {
             alert("✅ Login successful! Please complete KYC verification.")
-            setShowKyc(true)
+            setKycInProgress(true)
           }
         }
       } else {
@@ -188,7 +184,7 @@ export default function LenderLoginPage() {
             router.push("/lender")
           } else {
             alert("✅ Profile linked! Please complete KYC verification.")
-            setShowKyc(true)
+            setKycInProgress(true)
           }
         } else {
           await lenderService.createLenderProfile({
@@ -198,7 +194,7 @@ export default function LenderLoginPage() {
             kycCompleted: false
           })
           alert("✅ Profile created! Please complete KYC verification.")
-          setShowKyc(true)
+          setKycInProgress(true)
         }
       }
       setOtpStep(false)
@@ -214,9 +210,159 @@ export default function LenderLoginPage() {
     if (localStorage.getItem(`kyc:${role}`) === "true") {
       router.push("/lender")
     } else {
-      setShowKyc(true)
+      setKycInProgress(true)
     }
   }
+
+  // ✅ Camera Access
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      setCameraStream(stream)
+      if (videoRef.current) videoRef.current.srcObject = stream
+    } catch (err) {
+      console.error("Camera access denied:", err)
+      alert("Please allow camera access for KYC.")
+    }
+  }
+
+  // ✅ Capture Face Image
+  const captureImage = () => {
+    const canvas = document.createElement("canvas")
+    const video = videoRef.current
+    if (!video) return
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+    ctx.drawImage(video, 0, 0)
+    const image = canvas.toDataURL("image/png")
+    setCapturedImage(image)
+    cameraStream?.getTracks().forEach((t) => t.stop())
+  }
+
+  // ✅ Extract face from Aadhaar using Gemini
+  const extractFaceFromAadhaar = async () => {
+    if (!aadhaarImage) {
+      alert("Please upload Aadhaar photo first.")
+      return;
+    }
+
+    setIsExtractingFace(true);
+    try {
+      console.log("Starting face extraction from Aadhaar...");
+      const result = await geminiFaceService.extractFaceFromAadhaar(aadhaarImage);
+      console.log("Face extraction result:", result);
+      
+      if (result.success && result.croppedFaceImage) {
+        setExtractedAadhaarFace(result.croppedFaceImage);
+        const confidence = (result as any).confidence || "medium";
+        alert(`✅ Face detected in Aadhaar card!\nConfidence: ${confidence}\n\nYou can now proceed to capture your live image.`);
+      } else {
+        const errorMsg = result.error || "Unknown error occurred";
+        console.error("Face extraction failed:", errorMsg);
+        alert(`❌ Failed to extract face:\n${errorMsg}\n\nPlease ensure:\n• The Aadhaar image shows a clear face\n• The image is not blurry\n• Try uploading again`);
+      }
+    } catch (error: any) {
+      console.error("Face extraction error:", error);
+      alert(`❌ Face extraction failed:\n${error.message || "An unexpected error occurred."}\n\nPlease check:\n• Your Gemini API key is set correctly\n• You have internet connection\n• Try again`);
+    } finally {
+      setIsExtractingFace(false);
+    }
+  };
+
+  // ✅ Verify with InsightFace Face Comparison
+  const verifyWithHuggingFace = async () => {
+    if (!extractedAadhaarFace || !capturedImage) {
+      alert("⚠️ Please complete all steps:\n1. Extract face from Aadhaar card\n2. Capture your live image");
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      console.log("Starting face comparison for lender...");
+      
+      // Compare faces using InsightFace
+      const comparisonResult = await faceComparisonService.compareFaces(
+        extractedAadhaarFace,
+        capturedImage
+      );
+
+      console.log("Comparison result:", comparisonResult);
+
+      if (!comparisonResult.success) {
+        const errorMsg = comparisonResult.error || "Unknown error occurred";
+        console.error("Face comparison failed:", errorMsg);
+        
+        // Show user-friendly error message
+        if (errorMsg.includes("Python") || errorMsg.includes("script")) {
+          alert("❌ Configuration Error:\nInsightFace service is not available.\nPlease ensure Python is installed and dependencies are set up.\nSee INSIGHTFACE_SETUP.md for instructions.");
+        } else if (errorMsg.includes("No face detected")) {
+          alert(`❌ Verification Failed:\n${errorMsg}\n\nPlease ensure:\n- Both images clearly show your face\n- Good lighting conditions\n- Face is centered and visible\n- Try again`);
+        } else {
+          alert(`❌ Verification Failed:\n${errorMsg}\n\nPlease ensure:\n- Both images are clear and show your face\n- Good lighting conditions\n- Try again`);
+        }
+        return;
+      }
+
+      const similarity = comparisonResult.similarity || 0;
+      const threshold = 75; // Similarity threshold (75%)
+      const isMatch = comparisonResult.match !== undefined ? comparisonResult.match : similarity >= threshold;
+
+      console.log(`Similarity: ${similarity}%, Match: ${isMatch}, Threshold: ${threshold}%`);
+
+      if (isMatch) {
+        // Success - show similarity percentage
+        alert(`✅ KYC Verification Successful!\n\nSimilarity Score: ${similarity.toFixed(2)}%\nThreshold: ${threshold}%\n\nYour identity has been verified.`);
+        
+        localStorage.setItem(`kyc:${role}:${email}`, "true");
+        setHasKyc(true);
+        setKycInProgress(false);
+        
+        // Clean up extracted face image (temporary storage)
+        setExtractedAadhaarFace(null);
+        
+        // Update KYC status in Firebase database
+        try {
+          const currentUser = authService.getCurrentUser();
+          if (currentUser) {
+            console.log("Updating KYC status for lender:", currentUser.uid);
+            const updateResult = await lenderService.updateLenderProfile(currentUser.uid, {
+              kycCompleted: true
+            });
+            
+            if (updateResult.success) {
+              console.log("✅ KYC status updated in Firebase database");
+            } else {
+              console.error("❌ Failed to update KYC status:", updateResult.message);
+              alert("⚠️ KYC verified but database update failed. Please contact support.");
+            }
+          } else {
+            console.error("❌ No current user found for KYC update");
+            alert("⚠️ KYC verified but user session not found. Please try logging in again.");
+          }
+        } catch (error) {
+          console.error("❌ Failed to update KYC status in database:", error);
+          alert("⚠️ KYC verified but database update failed. Please contact support.");
+        }
+        
+        // Always redirect to dashboard after successful KYC verification
+        setTimeout(() => {
+          router.push("/lender");
+        }, 1000); // Small delay to show success message
+      } else {
+        // Failed - show similarity percentage and helpful message
+        alert(
+          `❌ Face Verification Failed\n\nSimilarity Score: ${similarity.toFixed(2)}%\nRequired Threshold: ${threshold}%\n\nTips to improve:\n• Ensure good lighting\n• Face the camera directly\n• Remove glasses/mask if possible\n• Make sure both images show your full face clearly\n\nPlease try again.`
+        );
+      }
+    } catch (error: any) {
+      console.error("InsightFace Verification Error:", error);
+      alert(`❌ Verification Error:\n${error.message || "An unexpected error occurred. Please try again later."}\n\nIf this persists, please contact support.`);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   // ✅ Forgot Password Function
   const handleForgotPassword = async () => {
@@ -311,9 +457,9 @@ export default function LenderLoginPage() {
           </TooltipProvider>
           <div className="flex flex-wrap gap-3">
             <Button onClick={signIn} disabled={isSendingOtp} className="bg-primary text-primary-foreground transition-transform duration-200 hover:scale-[1.01]">
-              {isSendingOtp ? 'Sending OTP...' : 'Sign In'}
+              {isSendingOtp ? "Sending OTP..." : "Sign In"}
             </Button>
-            <Button variant="outline" onClick={() => setShowKyc(true)}>
+            <Button variant="outline" onClick={() => setKycInProgress(true)}>
               Start KYC
             </Button>
             <Button variant="outline" onClick={photoLogin}>
@@ -411,55 +557,113 @@ export default function LenderLoginPage() {
                 variant="outline"
                 onClick={async () => {
                   setIsSendingOtp(true)
-                  const resend = await otpService.sendLoginOtp(email)
+                  const resend = await otpService.sendLoginOtp(email, 'lender')
                   setIsSendingOtp(false)
                   if (resend.success) alert('OTP resent. Please check your email.')
                   else alert(`Failed to resend OTP: ${resend.message}`)
                 }}
+                disabled={isSendingOtp}
               >
-                Resend
+                {isSendingOtp ? 'Sending...' : 'Resend'}
               </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {showKyc && (
+      {/* ✅ KYC Flow */}
+      {kycInProgress && (
         <div className="space-y-4">
-          <KycFlow
-            role={role}
-            onDone={async () => {
-              setHasKyc(true)
-              setShowKyc(false)
-              
-              // Update KYC status in Firebase database
-              try {
-                const currentUser = authService.getCurrentUser()
-                if (currentUser) {
-                  console.log("Updating KYC status for user:", currentUser.uid)
-                  const updateResult = await lenderService.updateLenderProfile(currentUser.uid, {
-                    kycCompleted: true
-                  })
-                  
-                  if (updateResult.success) {
-                    console.log("✅ KYC status updated in Firebase database")
-                  } else {
-                    console.error("❌ Failed to update KYC status:", updateResult.message)
-                    alert("⚠️ KYC verified but database update failed. Please contact support.")
-                  }
-                } else {
-                  console.error("❌ No current user found for KYC update")
-                  alert("⚠️ KYC verified but user session not found. Please try logging in again.")
-                }
-              } catch (error) {
-                console.error("❌ Failed to update KYC status in database:", error)
-                alert("⚠️ KYC verified but database update failed. Please contact support.")
-              }
-              
-              // Redirect post-KYC
-              router.push("/lender")
-            }}
-          />
+          <Card>
+            <CardContent className="p-6 space-y-4">
+              <h2 className="font-medium text-lg">Start KYC Verification</h2>
+
+              {/* Aadhaar Upload */}
+              <div>
+                <p className="text-sm mb-2">Step 1: Upload your Aadhaar photo:</p>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      const reader = new FileReader()
+                      reader.onload = (r) => {
+                        setAadhaarImage(r.target?.result as string)
+                        setExtractedAadhaarFace(null) // Reset extracted face when new Aadhaar is uploaded
+                      }
+                      reader.readAsDataURL(file)
+                    }
+                  }}
+                />
+                {aadhaarImage && (
+                  <div className="mt-3">
+                    <img
+                      src={aadhaarImage}
+                      alt="Aadhaar"
+                      className="mx-auto w-48 h-48 object-cover rounded-lg border"
+                    />
+                    <Button
+                      onClick={extractFaceFromAadhaar}
+                      disabled={isExtractingFace}
+                      className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      {isExtractingFace ? "Uploading..." : "Step 2: Upload your Aadhaar Card"}
+                    </Button>
+                  </div>
+                )}
+                {extractedAadhaarFace && (
+                  <div className="mt-3 text-center">
+                    <p className="text-sm font-medium mb-2">✅ Uploaded Image:</p>
+                    <img
+                      src={extractedAadhaarFace}
+                      alt="Extracted Face"
+                      className="mx-auto w-32 h-32 object-cover rounded-full border-2 border-green-500"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Camera Capture */}
+              <div>
+                <p className="text-sm mb-2">Step 3: Capture your live image:</p>
+                <Button onClick={startCamera} disabled={!extractedAadhaarFace}>
+                  Access Camera
+                </Button>
+                <div className="flex justify-center mt-2">
+                  {!capturedImage && (
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      className="rounded-lg shadow-md w-full max-w-sm"
+                    />
+                  )}
+                </div>
+                <Button onClick={captureImage} disabled={!cameraStream} className="w-full mt-2">
+                  Capture Image
+                </Button>
+
+                {capturedImage && (
+                  <div className="text-center mt-3">
+                    <p className="text-sm font-medium mb-2">Captured Image:</p>
+                    <img
+                      src={capturedImage}
+                      alt="Captured Face"
+                      className="mx-auto w-32 h-32 object-cover rounded-full border-2 border-blue-500"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <Button
+                onClick={verifyWithHuggingFace}
+                disabled={isVerifying || !capturedImage || !extractedAadhaarFace}
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
+              >
+                {isVerifying ? "Verifying with InsightFace..." : "Step 4: Verify & Complete KYC"}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       )}
     </main>
